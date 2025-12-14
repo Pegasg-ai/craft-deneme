@@ -1,24 +1,15 @@
 {
-  "package": {
-    "productName": "VoxelGame",
-    "version": "0.1.0"
-  },
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "VoxelGame",
+  "version": "0.1.0",
+  "identifier": "com.example.voxelgame",
   "build": {
     "beforeDevCommand": "npm run build",
     "beforeBuildCommand": "npm run build",
-    "devPath": "../dist",
-    "distDir": "../dist"
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
   },
-  "tauri": {
-    "bundle": {
-      "active": true,
-      "identifier": "com.example.voxelgame",
-      "targets": ["nsis"],
-      "icon": [],
-      "windows": {
-        "webviewInstallMode": "downloadBootstrapper"
-      }
-    },
+  "app": {
     "windows": [
       {
         "label": "main",
@@ -33,7 +24,14 @@
     ],
     "security": {
       "csp": "default-src 'self'; connect-src 'self' ws://localhost:* wss://0.peerjs.com https://0.peerjs.com; img-src 'self' blob: data:; media-src 'self' blob: data:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-src 'self';"
-    },
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"]
+  },
+  "plugins": {
     "updater": {
       "active": true,
       "dialog": true,
@@ -41,16 +39,6 @@
         "https://github.com/Pegasg-ai/craft-deneme/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3Mzk3QjI4MjUxMDhEMkMKUldRc2pSQWxLSHM1VnpHbEx6aHNwRUVXZS9MV0RCRTdOVDhxWTV1M1MvVlZDdURoa3Rscjk0amMK"
-    },
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      },
-      "protocol": {
-        "asset": true
-      }
     }
   }
 }
