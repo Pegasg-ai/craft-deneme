@@ -1,0 +1,56 @@
+{
+  "package": {
+    "productName": "VoxelGame",
+    "version": "0.1.0"
+  },
+  "build": {
+    "beforeDevCommand": "npm run build",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "../dist",
+    "distDir": "../dist"
+  },
+  "tauri": {
+    "bundle": {
+      "active": true,
+      "identifier": "com.example.voxelgame",
+      "targets": ["nsis"],
+      "icon": [],
+      "windows": {
+        "webviewInstallMode": "downloadBootstrapper"
+      }
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Voxel Game",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ws://localhost:* wss://0.peerjs.com https://0.peerjs.com; img-src 'self' blob: data:; media-src 'self' blob: data:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-src 'self';"
+    },
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "endpoints": [
+        "https://github.com/Pegasg-ai/craft-deneme/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3Mzk3QjI4MjUxMDhEMkMKUldRc2pSQWxLSHM1VnpHbEx6aHNwRUVXZS9MV0RCRTdOVDhxWTV1M1MvVlZDdURoa3Rscjk0amMK"
+    },
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
+      "protocol": {
+        "asset": true
+      }
+    }
+  }
+}

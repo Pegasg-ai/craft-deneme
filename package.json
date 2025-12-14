@@ -1,0 +1,11 @@
+{
+  "name": "voxel-game-tauri",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.js",
+    "tauri:dev": "cargo tauri dev --no-dev-server",
+    "tauri:build": "cargo tauri build"
+  },
+  "devDependencies": {}
+}

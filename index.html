@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Voxel Velocity - Final</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #5D8AA8;
+            user-select: none;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 6px;
+            pointer-events: none;
+            font-size: 14px;
+        }
+
+        /* HOTBAR */
+        #hotbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+
+        .slot {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #555;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.1s;
+            border-radius: 4px;
+        }
+
+        .slot.active {
+            border-color: white;
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .slot-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 2px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* MENU */
+        #menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 20, 30, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+        }
+
+        .menu-frame {
+            background: #222f3e;
+            width: 500px;
+            height: 500px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+            border: 1px solid #576574;
+        }
+
+        .tabs {
+            display: flex;
+            background: #2f3640;
+            border-bottom: 2px solid #111;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            color: #8395a7;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .tab.active {
+            background: #353b48;
+            color: #48dbfb;
+            border-bottom: 3px solid #48dbfb;
+        }
+
+        .tab:hover {
+            background: #353b48;
+        }
+
+        .content {
+            padding: 30px;
+            flex: 1;
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #c8d6e5;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #353b48;
+            border: 1px solid #576574;
+            color: white;
+            border-radius: 6px;
+            box-sizing: border-box;
+            outline: none;
+            font-size: 15px;
+        }
+
+        input:focus {
+            border-color: #48dbfb;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-green {
+            background: #10ac84;
+        }
+
+        .btn-green:hover {
+            background: #1dd1a1;
+        }
+
+        .btn-blue {
+            background: #2e86de;
+        }
+
+        .btn-blue:hover {
+            background: #54a0ff;
+        }
+
+        .btn-orange {
+            background: #ff9f43;
+        }
+
+        .btn-orange:hover {
+            background: #ffaf40;
+        }
+
+        #btn-close-menu {
+            margin: 20px;
+            text-align: center;
+            background: #57606f;
+            color: #ccc;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        #btn-close-menu:hover {
+            background: #747d8c;
+        }
+
+        #status {
+            color: #fbc531;
+            font-size: 13px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        #loading {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            color: #555;
+            font-size: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="crosshair"></div>
+    <div id="hud">
+        FPS: <span id="fps">0</span> | Blok: <span id="blk">0</span><br>
+        <span style="color:#aaa; font-size:12px">L: Kır | R: Koy | Orta: Seç | Shift: Koş</span>
+    </div>
+
+    <div id="hotbar"></div>
+
+    <div id="menu-overlay" style="display: flex;">
+        <div class="menu-frame">
+            <div class="tabs">
+                <div class="tab active" onclick="openTab(event, 'settings')">ANA MENÜ</div>
+                <div class="tab" onclick="openTab(event, 'graphics')">GRAFİK</div>
+                <div class="tab" onclick="openTab(event, 'multiplayer')">ÇOK OYUNCULU</div>
+            </div>
+
+            <!-- Settings -->
+            <div id="settings" class="content active">
+                <div class="control-group">
+                    <label>Oyuncu İsmi</label>
+                    <input type="text" id="inp-nick" value="Oyuncu" maxlength="20">
+                </div>
+                <div class="control-group">
+                    <label>Karakter Rengi</label>
+                    <input type="color" id="inp-color" value="#00a8ff" style="height:50px; padding:4px;">
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn-orange" id="btn-single" onclick="resumeGame()">OYUNA BAŞLA</button>
+                </div>
+            </div>
+
+            <!-- Graphics Settings -->
+            <div id="graphics" class="content">
+                <div class="control-group">
+                    <label>Grafik Kalitesi</label>
+                    <select id="quality-select" style="width:100%; padding:12px; background:#353b48; border:1px solid #576574; color:white; border-radius:6px; font-size:15px;">
+                        <option value="high">YÜKSEK (Güzel Görünüm)</option>
+                        <option value="medium">ORTA (Dengeli)</option>
+                        <option value="low">DÜŞÜK (Performans)</option>
+                    </select>
+                </div>
+                <div style="margin-top:15px; padding:15px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:13px; color:#c8d6e5;">
+                    <strong>DÜŞÜK:</strong> Render mesafesi azalır, daha az detay, daha yüksek FPS<br>
+                    <strong>ORTA:</strong> Dengeli performans ve görsel kalite<br>
+                    <strong>YÜKSEK:</strong> En iyi görünüm, daha fazla GPU kullanımı
+                </div>
+            </div>
+
+            <!-- Multiplayer -->
+            <div id="multiplayer" class="content">
+                <div class="control-group">
+                    <label>Senin ID No</label>
+                    <input type="text" id="my-id" readonly onclick="this.select()"
+                        style="background:#222; text-align:center; letter-spacing:1px;">
+                </div>
+                <div class="control-group">
+                    <label>Arkadaş ID No</label>
+                    <input type="text" id="host-id" placeholder="ID Yapıştır">
+                </div>
+                <div class="btn-row">
+                    <button class="btn-green" id="btn-host">SUNUCU OL</button>
+                    <button class="btn-blue" id="btn-join">BAĞLAN</button>
+                </div>
+                <p id="status"></p>
+            </div>
+
+            <div id="btn-close-menu">MENÜYÜ KAPAT (ESC)</div>
+        </div>
+        <div id="loading">VoxelEngine v1.1</div>
+    </div>
+
+    <!-- LIB -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <script>
+        // --- PRE-INIT GLOBALS ---
+        window.openTab = function (ev, id) {
+            document.querySelectorAll('.tab').forEach(e => e.className = 'tab');
+            document.querySelectorAll('.content').forEach(e => e.className = 'content');
+            if (ev && ev.target) ev.target.className = 'tab active';
+            document.getElementById(id).className = 'content active';
+        };
+
+        function resumeGame() {
+            if (!controls) {
+                alert("Hata: Oyun kontrolleri yüklenemedi. Lütfen internet bağlantınızı kontrol edip sayfayı yenileyiniz.\n\nEğer sorun devam ederse Three.js CDN servisinde sorun olabilir.");
+                return;
+            }
+            const overlay = document.getElementById('menu-overlay');
+            if (overlay) overlay.style.display = 'none';
+            // Request lock on next user click to satisfy browser gesture requirement
+            const onClickLock = () => {
+                document.removeEventListener('pointerdown', onClickLock);
+                if (!controls.isLocked) controls.lock();
+            };
+            document.addEventListener('pointerdown', onClickLock, { once: true });
+        }
+
+        // --- EMBEDDED NOISE ---
+        const PERLIN_SIZE = 4095;
+        class NativeNoise {
+            constructor() {
+                this.p = new Uint8Array(PERLIN_SIZE + 1);
+                for (let i = 0; i <= PERLIN_SIZE; i++) this.p[i] = Math.floor(Math.random() * 256);
+            }
+            noise2D(x, y) {
+                return (Math.sin(x) * Math.cos(y) + Math.sin(x * 3) * Math.cos(y * 3) * 0.5) / 1.5;
+            }
+        }
+        const noiseGen = new NativeNoise();
+
+        // --- CONFIG ---
+        const GRAVITY = 25.0;
+        const SPEED_WALK = 6.0;
+        const SPEED_SPRINT = 10.0;
+        const JUMP = 9.0;
+        const P_HEIGHT = 1.6;
+        const P_WIDTH = 0.6;
+        const MAX_INSTANCES = 150000; // Increased for 128x128 map
+        const MAP_SIZE = 64; // -64 to +64 = 128x128
+
+        // Block Types with enhanced visuals
+        const BLOCKS = [
+            null,
+            { name: 'Grass', col: 0x4CAF50, top: 0x66BB6A, side: 0x5D4037 },
+            { name: 'Dirt', col: 0x6D4C41, top: 0x795548, side: 0x5D4037 },
+            { name: 'Stone', col: 0x757575, top: 0x9E9E9E, side: 0x616161 },
+            { name: 'Wood', col: 0x5D4037, top: 0x8D6E63, side: 0x4E342E },
+            { name: 'Leaf', col: 0x43A047, top: 0x66BB6A, side: 0x2E7D32 },
+            { name: 'Brick', col: 0xC62828, top: 0xE53935, side: 0xB71C1C },
+            { name: 'Sand', col: 0xFFEB3B, top: 0xFFF176, side: 0xFDD835 },
+            { name: 'Snow', col: 0xECEFF1, top: 0xFFFFFF, side: 0xE0E0E0 },
+            { name: 'Water', col: 0x1E88E5, top: 0x42A5F5, side: 0x1976D2 },
+            { name: 'Cobble', col: 0x607D8B, top: 0x78909C, side: 0x546E7A }
+        ];
+
+        // --- GLOBALS ---
+        let camera, scene, renderer, controls;
+        let imeshes = [], instanceCounts = [];
+        let dummy = new THREE.Object3D();
+        let voxelData = new Map();
+        let instanceKeys = [];
+
+        let raycaster, selectedSlot = 1;
+        let moveState = { f: 0, b: 0, l: 0, r: 0, s: 0 };
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let onGround = false;
+
+        let peer, myId, conns = [], remotePlayers = {};
+        let myNick = "Oyuncu", myCol = "#00a8ff";
+        
+        // Graphics settings
+        let graphicsQuality = 'high'; // 'high', 'medium', 'low'
+        let renderDistance = { high: 120, medium: 80, low: 50 };
+        let pixelRatio = { high: 1.5, medium: 1.2, low: 1.0 };
+        
+        // Vehicle system
+        let vehicles = [];
+        let currentVehicle = null;
+        let currentVehicleSeat = -1;
+        let vehicleControls = { w: 0, s: 0, a: 0, d: 0, space: 0, isDriver: false };
+
+        // Timing variables (must be declared before animate)
+        let last = performance.now();
+        let fpsCounter = 0;
+        let fpsTime = 0;
+        let currentFps = 60;
+
+        // START
+        init();
+
+        function init() {
+            initThree();
+            initInstancing();
+            initWorld();
+            initUI();
+            initPeer();
+            animate();
+        }
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Light sky blue
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 120); // Extended fog range to prevent pop-in
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300); // Extended far plane
+            
+            // Optimized renderer
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: false, 
+                powerPreference: "high-performance",
+                stencil: false,
+                depth: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Limit pixel ratio for performance
+            renderer.shadowMap.enabled = false;
+            document.body.appendChild(renderer.domElement);
+
+            // Better lighting setup
+            const amb = new THREE.AmbientLight(0xffffff, 0.6); // Soft ambient
+            scene.add(amb);
+            
+            const sun = new THREE.DirectionalLight(0xfff5e6, 0.8); // Warm sunlight
+            sun.position.set(50, 100, 50);
+            scene.add(sun);
+            
+            // Hemisphere light for sky/ground color blending
+            const hemi = new THREE.HemisphereLight(0x87CEEB, 0x3d5c3d, 0.4);
+            scene.add(hemi);
+
+            if (typeof THREE.PointerLockControls === 'undefined') throw new Error("PointerLockControls yüklenemedi.");
+            controls = new THREE.PointerLockControls(camera, document.body);
+            scene.add(controls.getObject());
+            controls.getObject().position.set(0, 15, 0); // Start at reasonable height
+            camera.lookAt(0, 0, 0); // Look toward center
+
+            document.addEventListener('keydown', onKey);
+            document.addEventListener('keyup', onKey);
+            document.addEventListener('mousedown', onMouse);
+            window.addEventListener('resize', onResize);
+
+            raycaster = new THREE.Raycaster();
+            
+            // Apply initial graphics settings
+            applyGraphicsSettings();
+        }
+        
+        function applyGraphicsSettings() {
+            const dist = renderDistance[graphicsQuality];
+            const ratio = pixelRatio[graphicsQuality];
+            
+            // Update fog
+            scene.fog.near = dist * 0.4;
+            scene.fog.far = dist;
+            
+            // Update camera far plane
+            camera.far = dist * 2;
+            camera.updateProjectionMatrix();
+            
+            // Update pixel ratio
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, ratio));
+            
+            console.log(`Graphics: ${graphicsQuality.toUpperCase()}, Fog: ${dist}, Ratio: ${ratio}`);
+        }
+
+        // Generate procedural texture for a block
+        function createBlockTexture(block) {
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Base color
+            const baseColor = '#' + block.col.toString(16).padStart(6, '0');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add noise/grain for texture
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const brightness = Math.random() * 40 - 20;
+                ctx.fillStyle = `rgba(${brightness > 0 ? 255 : 0}, ${brightness > 0 ? 255 : 0}, ${brightness > 0 ? 255 : 0}, ${Math.abs(brightness) / 100})`;
+                ctx.fillRect(x, y, 2, 2);
+            }
+            
+            // Add subtle grid lines for block edges
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, size - 2, size - 2);
+            
+            // Inner highlight
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(3, 3, size - 6, size - 6);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            return texture;
+        }
+
+        function initInstancing() {
+            const geo = new THREE.BoxGeometry(1, 1, 1);
+            for (let i = 1; i < BLOCKS.length; i++) {
+                const texture = createBlockTexture(BLOCKS[i]);
+                const mat = new THREE.MeshLambertMaterial({ 
+                    map: texture,
+                    color: 0xffffff
+                });
+                const mesh = new THREE.InstancedMesh(geo, mat, MAX_INSTANCES);
+                mesh.castShadow = false; // Disable for performance
+                mesh.receiveShadow = false;
+                mesh.count = 0;
+                // IMPORTANT: Disable frustum culling for InstancedMesh
+                // Three.js can't properly cull individual instances, causing entire mesh to disappear
+                mesh.frustumCulled = false;
+                scene.add(mesh);
+                imeshes[i] = mesh;
+                instanceCounts[i] = 0;
+                instanceKeys[i] = [];
+            }
+        }
+
+        function setBlock(x, y, z, type, broadcast = true) {
+            const key = `${x},${y},${z}`;
+            const wasRemoved = voxelData.has(key) && type === 0;
+            
+            if (voxelData.has(key)) {
+                const old = voxelData.get(key);
+                if (old.type === type) return;
+                removeInstance(old.type, old.index);
+                voxelData.delete(key);
+                if (broadcast) Broadcast({ t: 'blk', a: 'rm', x, y, z });
+            }
+
+            if (type > 0) {
+                const idx = addInstance(type, x, y, z);
+                if (idx !== -1) {
+                    voxelData.set(key, { type, index: idx });
+                    instanceKeys[type][idx] = key;
+                    if (broadcast) Broadcast({ t: 'blk', a: 'add', x, y, z, v: type });
+                }
+            }
+            
+            // When a block is removed, check if player was standing on it and allow falling
+            if (wasRemoved && controls) {
+                const p = controls.getObject().position;
+                // Check if player was on or near this block
+                const playerFootY = p.y - P_HEIGHT;
+                if (Math.abs(p.x - x) < 1.5 && Math.abs(p.z - z) < 1.5 && 
+                    playerFootY >= y - 0.5 && playerFootY <= y + 1.5) {
+                    // Reset onGround to allow gravity to take effect
+                    onGround = false;
+                }
+            }
+            
+            document.getElementById('blk').innerText = voxelData.size;
+        }
+
+        function addInstance(type, x, y, z) {
+            const mesh = imeshes[type];
+            const cnt = instanceCounts[type];
+            if (cnt >= MAX_INSTANCES) return -1;
+            dummy.position.set(x, y, z);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(cnt, dummy.matrix);
+            mesh.instanceMatrix.needsUpdate = true;
+            instanceCounts[type]++;
+            mesh.count = instanceCounts[type];
+            return cnt;
+        }
+
+        function removeInstance(type, idx) {
+            const mesh = imeshes[type];
+            const cnt = instanceCounts[type];
+            const last = cnt - 1;
+
+            if (idx !== last) {
+                const mat = new THREE.Matrix4();
+                mesh.getMatrixAt(last, mat);
+                mesh.setMatrixAt(idx, mat);
+                const lastKey = instanceKeys[type][last];
+                instanceKeys[type][idx] = lastKey;
+                const d = voxelData.get(lastKey);
+                if (d) d.index = idx;
+            }
+
+            instanceCounts[type]--;
+            mesh.count = instanceCounts[type];
+            mesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function initWorld() {
+            // Ground plane (water level) - covers entire map
+            const waterGeo = new THREE.PlaneGeometry(MAP_SIZE * 2.5, MAP_SIZE * 2.5);
+            const waterMat = new THREE.MeshLambertMaterial({ 
+                color: 0x1E88E5, 
+                transparent: true, 
+                opacity: 0.6 
+            });
+            const water = new THREE.Mesh(waterGeo, waterMat);
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = 0.5;
+            scene.add(water);
+
+            // 128x128 Map with optimized terrain
+            const startTime = performance.now();
+            let blockCount = 0;
+            
+            for (let x = -MAP_SIZE; x <= MAP_SIZE; x++) {
+                for (let z = -MAP_SIZE; z <= MAP_SIZE; z++) {
+                    // Multi-octave noise for more interesting terrain
+                    let n1 = noiseGen.noise2D(x / 25, z / 25);
+                    let n2 = noiseGen.noise2D(x / 10, z / 10) * 0.5;
+                    let n = (n1 + n2) / 1.5;
+                    
+                    let h = Math.floor((n + 1) * 5) + 2; // Height 2-12
+                    
+                    // Only place surface blocks (optimization: skip underground)
+                    // Underground blocks aren't visible anyway
+                    const surfaceY = h - 1;
+                    
+                    // Bedrock layer
+                    setBlock(x, 0, z, 3, false); // Stone at bottom
+                    blockCount++;
+                    
+                    // Surface block
+                    if (h > 1) {
+                        let surfaceType = 1; // Grass
+                        if (h <= 2) surfaceType = 7; // Sand near water
+                        else if (h > 8) surfaceType = 8; // Snow on peaks
+                        setBlock(x, surfaceY, z, surfaceType, false);
+                        blockCount++;
+                        
+                        // One dirt layer below surface
+                        if (surfaceY > 1) {
+                            setBlock(x, surfaceY - 1, z, 2, false);
+                            blockCount++;
+                        }
+                    }
+                    
+                    // Trees (sparse)
+                    if (x % 8 === 0 && z % 8 === 0 && n > 0.2 && h > 3) {
+                        tree(x, h, z);
+                    }
+                }
+            }
+            
+            console.log(`World generated: ${blockCount} blocks in ${(performance.now() - startTime).toFixed(0)}ms`);
+            
+            // Spawn a car near spawn point
+            spawnVehicle(5, 10, 5);
+        }
+        function tree(x, y, z) {
+            for (let i = 0; i < 4; i++) setBlock(x, y + i, z, 4, false);
+            for (let lx = x - 2; lx <= x + 2; lx++)
+                for (let lz = z - 2; lz <= z + 2; lz++)
+                    if (lx !== x || lz !== z) setBlock(lx, y + 3, lz, 5, false);
+            setBlock(x, y + 4, z, 5, false);
+        }
+
+        function initUI() {
+            const hb = document.getElementById('hotbar');
+            // Only show first 9 blocks in hotbar (1-9 keys)
+            const maxSlots = Math.min(BLOCKS.length, 10);
+            for (let i = 1; i < maxSlots; i++) {
+                const div = document.createElement('div');
+                div.className = (i === 1) ? 'slot active' : 'slot';
+                div.id = `slot-${i}`;
+                div.onclick = () => selectSlot(i);
+                div.title = BLOCKS[i].name; // Tooltip
+                const col = document.createElement('div');
+                col.className = 'slot-color';
+                // Gradient for nicer look
+                const baseCol = '#' + BLOCKS[i].col.toString(16).padStart(6, '0');
+                const topCol = '#' + (BLOCKS[i].top || BLOCKS[i].col).toString(16).padStart(6, '0');
+                col.style.background = `linear-gradient(135deg, ${topCol} 0%, ${baseCol} 100%)`;
+                div.appendChild(col);
+                hb.appendChild(div);
+            }
+
+            document.getElementById('btn-close-menu').onclick = resumeGame;
+            
+            // ESC key handler
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Escape' && !e.repeat) {
+                    const overlay = document.getElementById('menu-overlay');
+                    if (overlay.style.display === 'flex') {
+                        // Menu open -> close and lock
+                        resumeGame();
+                    } else {
+                        // Menu closed -> let browser unlock, we show menu on unlock event
+                        // If not locked already, just show menu
+                        if (!controls.isLocked) {
+                            overlay.style.display = 'flex';
+                        }
+                    }
+                }
+            });
+            
+            // Simple ESC menu handler using unlock event
+            controls.addEventListener('unlock', () => {
+                // When pointer unlocks, show menu
+                document.getElementById('menu-overlay').style.display = 'flex';
+            });
+            
+            controls.addEventListener('lock', () => {
+                // When pointer locks, hide menu
+                document.getElementById('menu-overlay').style.display = 'none';
+            });
+
+            const nI = document.getElementById('inp-nick');
+            const cI = document.getElementById('inp-color');
+            const sync = () => { 
+                myNick = nI.value; 
+                myCol = cI.value; 
+                // Include ID in profile broadcast
+                Broadcast({ t: 'p', i: myId, n: myNick, c: myCol }); 
+            };
+            nI.oninput = sync; 
+            cI.oninput = sync;
+
+            document.getElementById('btn-single').onclick = resumeGame;
+
+            document.getElementById('btn-host').onclick = () => {
+                resumeGame(); document.getElementById('status').innerText = "Host Aktif.";
+            };
+            document.getElementById('btn-join').onclick = () => {
+                const id = document.getElementById('host-id').value.trim();
+                if (id && peer) {
+                    document.getElementById('status').innerText = "Bağlanıyor...";
+                    const conn = peer.connect(id);
+                    conn.on('open', () => {
+                        SetupConn(conn);
+                        resumeGame();
+                        document.getElementById('status').innerText = "Bağlandı!";
+                    });
+                    conn.on('error', (err) => {
+                        document.getElementById('status').innerText = "Hata: " + err;
+                    });
+                } else {
+                    document.getElementById('status').innerText = "ID giriniz!";
+                }
+            };
+            
+            // Graphics quality selector
+            document.getElementById('quality-select').value = graphicsQuality;
+            document.getElementById('quality-select').onchange = (e) => {
+                graphicsQuality = e.target.value;
+                applyGraphicsSettings();
+                console.log('Graphics changed to:', graphicsQuality);
+            };
+        }
+
+        function selectSlot(i) {
+            if (i < 1 || i >= BLOCKS.length) return;
+            selectedSlot = i;
+            document.querySelectorAll('.slot').forEach(el => el.className = 'slot');
+            document.getElementById(`slot-${i}`).className = 'slot active';
+        }
+
+        function onKey(e) {
+            const d = e.type === 'keydown';
+            
+            // Vehicle controls (only if in vehicle)
+            if (currentVehicle) {
+                switch (e.code) {
+                    case 'KeyW': vehicleControls.w = d; break;
+                    case 'KeyS': vehicleControls.s = d; break;
+                    case 'KeyA': vehicleControls.a = d; break;
+                    case 'KeyD': vehicleControls.d = d; break;
+                    case 'Space': vehicleControls.space = d; break;
+                    case 'KeyE': 
+                        if (d) exitVehicle(); 
+                        break;
+                }
+                return; // Don't process player movement while in vehicle
+            }
+
+            // Player controls
+            switch (e.code) {
+                case 'KeyW': moveState.f = d; break;
+                case 'KeyS': moveState.b = d; break;
+                case 'KeyA': moveState.l = d; break;
+                case 'KeyD': moveState.r = d; break;
+                case 'Space': if (d && onGround) velocity.y = JUMP; break;
+                case 'ShiftLeft': moveState.s = d; break;
+                case 'KeyE':
+                    if (d) tryEnterNearbyVehicle();
+                    break;
+            }
+            if (d && e.key >= '1' && e.key <= '9') selectSlot(parseInt(e.key));
+        }
+
+        function tryEnterNearbyVehicle() {
+            const playerPos = controls.getObject().position;
+            const cameraDir = new THREE.Vector3();
+            controls.getDirection(cameraDir);
+            
+            // Raycast to find vehicle player is looking at
+            const raycaster = new THREE.Raycaster(playerPos, cameraDir, 0, 5);
+            
+            for (const vehicle of vehicles) {
+                // Check if looking at vehicle and close enough
+                const dist = playerPos.distanceTo(vehicle.position);
+                if (dist < 5) {
+                    // Check if vehicle has empty seats
+                    const hasEmptySeat = vehicle.seats.some(s => s.occupied === null);
+                    if (hasEmptySeat) {
+                        enterVehicle(vehicle);
+                        return;
+                    }
+                }
+            }
+        }
+
+        function onMouse(e) {
+            if (!controls.isLocked) return;
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const hits = raycaster.intersectObjects(imeshes.filter(m => m));
+
+            if (hits.length > 0) {
+                const h = hits[0];
+                const p = h.point.clone().add(h.face.normal.clone().multiplyScalar(0.5));
+                const rmP = h.point.clone().add(h.face.normal.clone().multiplyScalar(-0.5));
+                const bx = Math.round(p.x); const by = Math.round(p.y); const bz = Math.round(p.z);
+                const rx = Math.round(rmP.x); const ry = Math.round(rmP.y); const rz = Math.round(rmP.z);
+
+                if (e.button === 0) { // Left: Break
+                    setBlock(rx, ry, rz, 0);
+                }
+                else if (e.button === 1) { // Middle: Pick
+                    const k = `${rx},${ry},${rz}`;
+                    const d = voxelData.get(k);
+                    if (d) selectSlot(d.type);
+                }
+                else if (e.button === 2) { // Right: Place
+                    if (!aabbTest(controls.getObject().position, bx, by, bz)) {
+                        setBlock(bx, by, bz, selectedSlot);
+                    }
+                }
+            }
+        }
+
+        function updatePhys(dt) {
+            if (currentVehicle) {
+                updateVehiclePhysics(dt);
+                return; // Don't update player physics when in vehicle
+            }
+
+            // Y Physics (Gravity)
+            velocity.y -= GRAVITY * dt;
+
+            // Input Movement (World Axis)
+            const moveSpeed = (moveState.s ? SPEED_SPRINT : SPEED_WALK) * dt;
+            const camDir = new THREE.Vector3(); controls.getDirection(camDir); camDir.y = 0; camDir.normalize();
+            const sideDir = new THREE.Vector3(); sideDir.crossVectors(controls.getObject().up, camDir).normalize();
+
+            const dx = new THREE.Vector3();
+            if (moveState.f) dx.add(camDir);
+            if (moveState.b) dx.sub(camDir);
+            if (moveState.l) dx.add(sideDir);
+            if (moveState.r) dx.sub(sideDir);
+            dx.normalize().multiplyScalar(moveSpeed);
+
+            const p = controls.getObject().position;
+
+            // Apply X/Z Move
+            p.x += dx.x; p.z += dx.z;
+            if (checkCol(p)) {
+                // Simple separate axis resolution basic
+                p.x -= dx.x;
+                if (checkCol(p)) { p.x += dx.x; p.z -= dx.z; } // Try X only
+                if (checkCol(p)) { p.x -= dx.x; } // Neither worked, stay put
+            }
+
+            // Y Physics
+            p.y += velocity.y * dt;
+            onGround = false;
+            // Check Head Collision first (Upward movement or jump)
+            if (velocity.y > 0 && checkCol(p)) {
+                p.y -= velocity.y * dt;
+                velocity.y = 0;
+            }
+            // Check Foot Collision (Gravity)
+            else if (checkCol(p)) {
+                p.y -= velocity.y * dt;
+                if (velocity.y < 0) {
+                    onGround = true;
+                }
+                velocity.y = 0;
+            }
+            if (p.y < -30) { p.set(0, 30, 0); velocity.set(0, 0, 0); }
+        }
+
+        function checkCol(p) {
+            // Precise AABB vs Block Voxel
+            // Player AABB - slightly smaller to allow standing on edges better
+            const edgeMargin = 0.05; // Small margin to help with edge standing
+            const minX = p.x - P_WIDTH / 2 + edgeMargin; 
+            const maxX = p.x + P_WIDTH / 2 - edgeMargin;
+            const minY = p.y - P_HEIGHT; 
+            const maxY = p.y;
+            const minZ = p.z - P_WIDTH / 2 + edgeMargin; 
+            const maxZ = p.z + P_WIDTH / 2 - edgeMargin;
+
+            // Broadphase range (Increase range to catch leaves above head)
+            const iMinX = Math.floor(p.x - P_WIDTH / 2 - 0.5); 
+            const iMaxX = Math.floor(p.x + P_WIDTH / 2 + 0.5);
+            const iMinY = Math.floor(minY - 0.5); 
+            const iMaxY = Math.floor(maxY + 1.5);
+            const iMinZ = Math.floor(p.z - P_WIDTH / 2 - 0.5); 
+            const iMaxZ = Math.floor(p.z + P_WIDTH / 2 + 0.5);
+
+            for (let x = iMinX; x <= iMaxX; x++) {
+                for (let y = iMinY; y <= iMaxY; y++) {
+                    for (let z = iMinZ; z <= iMaxZ; z++) {
+                        if (voxelData.has(`${x},${y},${z}`)) {
+                            // Block AABB (Centered at x,y,z with size 1)
+                            const bMinX = x - 0.5; const bMaxX = x + 0.5;
+                            const bMinY = y - 0.5; const bMaxY = y + 0.5;
+                            const bMinZ = z - 0.5; const bMaxZ = z + 0.5;
+
+                            if (minX < bMaxX && maxX > bMinX &&
+                                minY < bMaxY && maxY > bMinY &&
+                                minZ < bMaxZ && maxZ > bMinZ) return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Remove old 'check'
+        function check(p) { return checkCol(p); }
+        function aabbTest(p, x, y, z) {
+            const r = P_WIDTH / 2;
+            return (p.x + r > x - 0.5 && p.x - r < x + 0.5 && p.z + r > z - 0.5 && p.z - r < z + 0.5 && p.y > y - 0.5 && p.y - P_HEIGHT < y + 0.5);
+        }
+
+        // Vehicle System
+        function spawnVehicle(x, y, z) {
+            const vehicle = new THREE.Group();
+            vehicle.position.set(x, y, z);
+            
+            // Car body - Üst açık convertible tasarım
+            const bodyGeo = new THREE.BoxGeometry(2, 0.6, 3);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2244cc });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.5;
+            vehicle.add(body);
+            
+            // Front/back panels
+            const frontGeo = new THREE.BoxGeometry(2, 0.4, 0.1);
+            const front = new THREE.Mesh(frontGeo, bodyMat);
+            front.position.set(0, 0.7, 1.5);
+            vehicle.add(front);
+            
+            const back = new THREE.Mesh(frontGeo, bodyMat);
+            back.position.set(0, 0.7, -1.5);
+            vehicle.add(back);
+            
+            // Wheels
+            const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+            const wheelPositions = [
+                [-0.8, 0.3, 1.2], [0.8, 0.3, 1.2],  // Front
+                [-0.8, 0.3, -1.2], [0.8, 0.3, -1.2] // Rear
+            ];
+            
+            vehicle.wheels = [];
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(...pos);
+                vehicle.add(wheel);
+                vehicle.wheels.push(wheel);
+            });
+            
+            // Seat meshes (4 visible seats)
+            const seatGeo = new THREE.BoxGeometry(0.4, 0.2, 0.4);
+            const seatMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const seatBackGeo = new THREE.BoxGeometry(0.4, 0.4, 0.1);
+            
+            const seatPositions = [
+                { pos: [-0.5, 0.9, 0.6], name: 'driver' },     // Driver (front left)
+                { pos: [0.5, 0.9, 0.6], name: 'passenger' },   // Front right
+                { pos: [-0.5, 0.9, -0.6], name: 'backLeft' },  // Back left
+                { pos: [0.5, 0.9, -0.6], name: 'backRight' }   // Back right
+            ];
+            
+            vehicle.seatMeshes = [];
+            seatPositions.forEach(({pos, name}) => {
+                const seatGroup = new THREE.Group();
+                
+                // Seat cushion
+                const cushion = new THREE.Mesh(seatGeo, seatMat);
+                seatGroup.add(cushion);
+                
+                // Seat back
+                const back = new THREE.Mesh(seatBackGeo, seatMat);
+                back.position.set(0, 0.2, -0.15);
+                seatGroup.add(back);
+                
+                seatGroup.position.set(...pos);
+                vehicle.add(seatGroup);
+                vehicle.seatMeshes.push(seatGroup);
+            });
+            
+            // Seat positions (4 seats)
+            vehicle.seats = [
+                { pos: new THREE.Vector3(-0.5, 0.9, 0.6), occupied: null },  // Driver (front left)
+                { pos: new THREE.Vector3(0.5, 0.9, 0.6), occupied: null },   // Front right
+                { pos: new THREE.Vector3(-0.5, 0.9, -0.6), occupied: null }, // Back left
+                { pos: new THREE.Vector3(0.5, 0.9, -0.6), occupied: null }   // Back right
+            ];
+            
+            // Vehicle physics properties
+            vehicle.velocity = new THREE.Vector3();
+            vehicle.rotation.y = 0;
+            vehicle.onGround = false;
+            vehicle.id = Date.now() + Math.random();
+            
+            scene.add(vehicle);
+            vehicles.push(vehicle);
+            return vehicle;
+        }
+        
+        function enterVehicle(vehicle, seatIndex = -1) {
+            // Find first available seat
+            if (seatIndex === -1) {
+                seatIndex = vehicle.seats.findIndex(s => s.occupied === null);
+                if (seatIndex === -1) return; // No seats available
+            }
+            
+            // Occupy seat
+            vehicle.seats[seatIndex].occupied = myId;
+            currentVehicle = vehicle;
+            currentVehicleSeat = seatIndex;
+            
+            // Only driver (seat 0) can control
+            if (seatIndex === 0) {
+                // Driver view
+                vehicleControls.isDriver = true;
+            } else {
+                vehicleControls.isDriver = false;
+            }
+            
+            // Broadcast vehicle entry
+            Broadcast({ t: 'vehicleEnter', vid: vehicle.id, pid: myId, seat: seatIndex });
+        }
+        
+        function exitVehicle() {
+            if (!currentVehicle) return;
+            
+            // Free the seat
+            if (currentVehicleSeat !== -1) {
+                currentVehicle.seats[currentVehicleSeat].occupied = null;
+            }
+            
+            // Broadcast vehicle exit
+            Broadcast({ t: 'vehicleExit', vid: currentVehicle.id, pid: myId, seat: currentVehicleSeat });
+            
+            // Place player next to vehicle
+            const exitPos = new THREE.Vector3(3, 1, 0);
+            const upVector = new THREE.Vector3(0, 1, 0);
+            exitPos.applyAxisAngle(upVector, currentVehicle.rotation.y);
+            controls.getObject().position.copy(currentVehicle.position).add(exitPos);
+            controls.getObject().position.y += 2;
+            
+            currentVehicle = null;
+            currentVehicleSeat = -1;
+            vehicleControls.isDriver = false;
+            
+            // Lock controls only if not already locked
+            if (!document.pointerLockElement) {
+                setTimeout(() => controls.lock(), 100);
+            }
+        }
+        
+        function updateVehiclePhysics(dt) {
+            const v = currentVehicle;
+            if (!v) return;
+            
+            // Update player camera position to seat (but keep free look)
+            if (currentVehicleSeat !== -1 && v.seats[currentVehicleSeat]) {
+                const seatPos = v.seats[currentVehicleSeat].pos.clone();
+                const upVector = new THREE.Vector3(0, 1, 0);
+                seatPos.applyAxisAngle(upVector, v.rotation.y);
+                const worldSeatPos = v.position.clone().add(seatPos);
+                controls.getObject().position.copy(worldSeatPos);
+            }
+            
+            // Only driver can control vehicle
+            if (!vehicleControls.isDriver || currentVehicleSeat !== 0) {
+                return; // Passengers don't control vehicle
+            }
+            
+            // Vehicle controls (driver only)
+            const accel = 15 * dt;
+            const turnSpeed = 2 * dt;
+            const maxSpeed = 10 * dt;
+            
+            // Forward/backward
+            if (vehicleControls.w) {
+                v.velocity.z = Math.min(v.velocity.z + accel, maxSpeed);
+            } else if (vehicleControls.s) {
+                v.velocity.z = Math.max(v.velocity.z - accel, -maxSpeed * 0.5);
+            } else {
+                v.velocity.z *= 0.95; // Friction
+            }
+            
+            // Steering (only when moving)
+            if (Math.abs(v.velocity.z) > 0.01) {
+                if (vehicleControls.a) v.rotation.y += turnSpeed * Math.sign(v.velocity.z);
+                if (vehicleControls.d) v.rotation.y -= turnSpeed * Math.sign(v.velocity.z);
+            }
+            
+            // Gravity
+            v.velocity.y -= GRAVITY * dt;
+            
+            // Jump (only when on ground)
+            if (vehicleControls.space && v.onGround) {
+                v.velocity.y = JUMP;
+                v.onGround = false;
+            }
+            
+            // Apply movement
+            const forward = new THREE.Vector3(0, 0, 1);
+            const upVector = new THREE.Vector3(0, 1, 0);
+            forward.applyAxisAngle(upVector, v.rotation.y);
+            
+            v.position.x += forward.x * v.velocity.z;
+            v.position.z += forward.z * v.velocity.z;
+            
+            // Collision check horizontal
+            if (checkVehicleCollision(v)) {
+                v.position.x -= forward.x * v.velocity.z;
+                v.position.z -= forward.z * v.velocity.z;
+                v.velocity.z = 0;
+            }
+            
+            // Apply vertical movement
+            v.position.y += v.velocity.y * dt;
+            v.onGround = false;
+            
+            // Collision check vertical
+            if (checkVehicleCollision(v)) {
+                v.position.y -= v.velocity.y * dt;
+                if (v.velocity.y < 0) v.onGround = true;
+                v.velocity.y = 0;
+            }
+            
+            // Wheel rotation animation
+            if (v.wheels) {
+                const wheelRot = v.velocity.z * 5;
+                v.wheels.forEach(wheel => {
+                    wheel.rotation.x += wheelRot;
+                });
+            }
+            
+            // Broadcast vehicle position
+            if (myId && conns.length > 0) {
+                Broadcast({ 
+                    t: 'v', 
+                    i: v.id, 
+                    x: v.position.x, 
+                    y: v.position.y, 
+                    z: v.position.z, 
+                    ry: v.rotation.y 
+                });
+            }
+        }
+        
+        function checkVehicleCollision(vehicle) {
+            // Check 4 corners and center of vehicle base
+            const checkPoints = [
+                new THREE.Vector3(-0.9, 0, 1.4),
+                new THREE.Vector3(0.9, 0, 1.4),
+                new THREE.Vector3(-0.9, 0, -1.4),
+                new THREE.Vector3(0.9, 0, -1.4),
+                new THREE.Vector3(0, 0, 0)
+            ];
+            
+            for (const point of checkPoints) {
+                const upVector = new THREE.Vector3(0, 1, 0);
+                const worldPoint = point.clone().applyAxisAngle(upVector, vehicle.rotation.y).add(vehicle.position);
+                const bx = Math.floor(worldPoint.x);
+                const by = Math.floor(worldPoint.y);
+                const bz = Math.floor(worldPoint.z);
+                
+                const k = `${bx},${by},${bz}`;
+                if (voxelData.has(k)) return true;
+            }
+            return false;
+        }
+
+        function initPeer() {
+            if (typeof Peer === 'undefined') return;
+            peer = new Peer();
+            peer.on('open', id => { myId = id; document.getElementById('my-id').value = id; });
+            peer.on('connection', SetupConn);
+        }
+        function SetupConn(c) {
+            conns.push(c);
+            c.on('data', d => {
+                if (d.t === 'm') {
+                    UpdPlayer(d);
+                    // Relay movement to other connections (mesh network)
+                    relayToOthers(d, c);
+                }
+                if (d.t === 'blk') {
+                    setBlock(d.x, d.y, d.z, d.a === 'add' ? d.v : 0, false);
+                    // Relay block changes to others
+                    relayToOthers(d, c);
+                }
+                if (d.t === 'p') {
+                    UpdProf(d);
+                    // Relay profile to others
+                    relayToOthers(d, c);
+                }
+                if (d.t === 'v') {
+                    // Vehicle position update
+                    updateRemoteVehicle(d);
+                    // Relay to others
+                    relayToOthers(d, c);
+                }
+                if (d.t === 'vehicleEnter') {
+                    // Remote player entered vehicle
+                    handleRemoteVehicleEnter(d);
+                    relayToOthers(d, c);
+                }
+                if (d.t === 'vehicleExit') {
+                    // Remote player exited vehicle
+                    handleRemoteVehicleExit(d);
+                    relayToOthers(d, c);
+                }
+                // Handle peer list for mesh network
+                if (d.t === 'peers') {
+                    d.list.forEach(peerId => {
+                        if (peerId !== myId && !conns.find(conn => conn.peer === peerId)) {
+                            console.log('Connecting to peer:', peerId);
+                            const newConn = peer.connect(peerId);
+                            newConn.on('open', () => SetupConn(newConn));
+                        }
+                    });
+                }
+            });
+            
+            // Send current profile with ID
+            c.send({ t: 'p', i: myId, n: myNick, c: myCol });
+            
+            // Send list of known peers for mesh networking
+            const peerList = conns.map(conn => conn.peer).filter(p => p && p !== c.peer);
+            if (peerList.length > 0) {
+                c.send({ t: 'peers', list: peerList });
+            }
+            
+            // Sync world to new player
+            console.log('New player connected, syncing world...');
+            setTimeout(() => {
+                syncWorldToConnection(c);
+            }, 500);
+            
+            console.log('Total connections:', conns.length);
+        }
+        
+        // Relay messages to all connections except the source
+        function relayToOthers(msg, sourceConn) {
+            conns.forEach(c => {
+                if (c !== sourceConn && c.open) {
+                    try { c.send(msg); } catch(e) {}
+                }
+            });
+        }
+        
+        // Send world state to a specific connection
+        function syncWorldToConnection(c) {
+            if (!c.open) return;
+            let sent = 0;
+            voxelData.forEach((data, key) => {
+                const [x, y, z] = key.split(',').map(Number);
+                c.send({ t: 'blk', a: 'add', x, y, z, v: data.type });
+                sent++;
+            });
+            console.log(`Synced ${sent} blocks`);
+        }
+        
+        function Broadcast(m) { 
+            conns.forEach(c => {
+                if (c.open) {
+                    try { c.send(m); } catch(e) { console.warn('Send failed:', e); }
+                }
+            }); 
+        }
+
+        function updateRemoteVehicle(d) {
+            // Find or create remote vehicle
+            let vehicle = vehicles.find(v => v.id === d.i);
+            if (!vehicle) {
+                vehicle = spawnVehicle(d.x, d.y, d.z);
+                vehicle.id = d.i;
+                vehicle.isRemote = true;
+            }
+            
+            // Smooth interpolation
+            vehicle.position.lerp(new THREE.Vector3(d.x, d.y, d.z), 0.3);
+            
+            // Interpolate rotation
+            const targetRot = d.ry;
+            let diff = targetRot - vehicle.rotation.y;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            vehicle.rotation.y += diff * 0.3;
+        }
+
+        function handleRemoteVehicleEnter(d) {
+            // Find vehicle
+            const vehicle = vehicles.find(v => v.id === d.vid);
+            if (!vehicle || !vehicle.seats) return;
+            
+            // Mark seat as occupied
+            if (vehicle.seats[d.seat]) {
+                vehicle.seats[d.seat].occupied = d.pid;
+            }
+            
+            // Hide remote player's mesh if they're in vehicle
+            if (remotePlayers[d.pid] && remotePlayers[d.pid].mesh) {
+                remotePlayers[d.pid].inVehicle = true;
+                remotePlayers[d.pid].vehicleId = d.vid;
+                remotePlayers[d.pid].seatIndex = d.seat;
+            }
+        }
+
+        function handleRemoteVehicleExit(d) {
+            // Find vehicle
+            const vehicle = vehicles.find(v => v.id === d.vid);
+            if (!vehicle || !vehicle.seats) return;
+            
+            // Free seat
+            if (vehicle.seats[d.seat]) {
+                vehicle.seats[d.seat].occupied = null;
+            }
+            
+            // Show remote player's mesh
+            if (remotePlayers[d.pid]) {
+                remotePlayers[d.pid].inVehicle = false;
+                remotePlayers[d.pid].vehicleId = null;
+                remotePlayers[d.pid].seatIndex = -1;
+            }
+        }
+
+        function UpdPlayer(d) {
+            if (!d.i || d.i === myId) return; // Don't create player for self
+            
+            if (!remotePlayers[d.i]) {
+                console.log('Creating remote player:', d.i);
+                const g = new THREE.Group();
+                
+                // Body
+                const m = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.6, 0.9, 0.4), 
+                    new THREE.MeshLambertMaterial({ color: 0xffffff })
+                );
+                m.position.y = 0.45; 
+                g.add(m);
+                
+                // Head
+                const h = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.4, 0.4, 0.4), 
+                    new THREE.MeshLambertMaterial({ color: 0xffccaa })
+                );
+                h.position.y = 1.1; 
+                g.add(h);
+                
+                // Nametag sprite - properly configured
+                const spriteMat = new THREE.SpriteMaterial({ 
+                    transparent: true,
+                    depthTest: false,
+                    depthWrite: false
+                });
+                const s = new THREE.Sprite(spriteMat);
+                s.position.y = 1.8; 
+                s.scale.set(3, 0.75, 1); 
+                g.add(s);
+                
+                scene.add(g);
+                remotePlayers[d.i] = { 
+                    m: g, 
+                    tp: new THREE.Vector3(), 
+                    tr: 0, 
+                    nick: '', 
+                    col: '#ffffff',
+                    inVehicle: false,
+                    vehicleId: null,
+                    seatIndex: -1
+                };
+            }
+            const p = remotePlayers[d.i];
+            
+            // Only update position if not in vehicle
+            if (!p.inVehicle) {
+                p.tp.set(d.x, d.y - 1.6, d.z);
+            }
+        }
+        function UpdProf(d) {
+            if (!d.i || d.i === myId) return; // Don't update self
+            
+            // Create player if doesn't exist
+            if (!remotePlayers[d.i]) {
+                UpdPlayer({ i: d.i, x: 0, y: 10, z: 0 });
+            }
+            
+            const p = remotePlayers[d.i];
+            if (!p) return;
+            
+            // Update body color
+            try {
+                p.m.children[0].material.color.set(d.c);
+            } catch(e) { console.warn('Color set failed:', e); }
+            
+            // Store profile data
+            p.nick = d.n;
+            p.col = d.c;
+            
+            // Minecraft-style nametag
+            const C = document.createElement('canvas'); 
+            C.width = 512; 
+            C.height = 128;
+            const X = C.getContext('2d');
+            
+            // Clear canvas with transparency
+            X.clearRect(0, 0, 512, 128);
+            
+            // Setup font
+            X.font = "bold 36px Arial, sans-serif";
+            X.textAlign = "center";
+            X.textBaseline = "middle";
+            const textWidth = X.measureText(d.n).width;
+            
+            // Draw semi-transparent black background (Minecraft style)
+            const padding = 16;
+            const bgX = 256 - textWidth / 2 - padding;
+            const bgWidth = textWidth + padding * 2;
+            const bgHeight = 50;
+            const bgY = 39;
+            
+            // Rounded rect background
+            X.fillStyle = "rgba(0, 0, 0, 0.5)";
+            X.beginPath();
+            X.roundRect(bgX, bgY, bgWidth, bgHeight, 4);
+            X.fill();
+            
+            // Draw text shadow (Minecraft has dark shadow)
+            X.fillStyle = "#3F3F3F";
+            X.fillText(d.n, 258, 51);
+            
+            // Draw main text (white)
+            X.fillStyle = "#FFFFFF";
+            X.fillText(d.n, 256, 48);
+            
+            const texture = new THREE.CanvasTexture(C);
+            texture.minFilter = THREE.LinearFilter;
+            p.m.children[2].material.map = texture;
+            p.m.children[2].material.needsUpdate = true;
+        }
+
+        // window.openTab moved to top
+        function onResize() {
+            camera.aspect = innerWidth / innerHeight; 
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const t = performance.now();
+            const dt = Math.min((t - last) / 1000, 0.1); // Cap delta time to prevent huge jumps
+            last = t;
+            
+            // FPS counter (update every 500ms for stability)
+            fpsCounter++;
+            fpsTime += dt;
+            if (fpsTime >= 0.5) {
+                currentFps = Math.round(fpsCounter / fpsTime);
+                document.getElementById('fps').innerText = currentFps;
+                fpsCounter = 0;
+                fpsTime = 0;
+            }
+            
+            if (controls.isLocked) {
+                updatePhys(dt);
+                const p = controls.getObject().position;
+                // Throttle network broadcasts (every 50ms instead of every frame)
+                if (t % 50 < 20) {
+                    Broadcast({ t: 'm', i: myId, x: p.x, y: p.y, z: p.z });
+                }
+            }
+            
+            // Smooth remote player interpolation
+            for (let k in remotePlayers) {
+                const rp = remotePlayers[k];
+                
+                // If player is in vehicle, position them in their seat (sitting pose)
+                if (rp.inVehicle && rp.vehicleId) {
+                    const vehicle = vehicles.find(v => v.id === rp.vehicleId);
+                    if (vehicle && vehicle.seats && rp.seatIndex !== -1) {
+                        const seatPos = vehicle.seats[rp.seatIndex].pos.clone();
+                        const upVector = new THREE.Vector3(0, 1, 0);
+                        seatPos.applyAxisAngle(upVector, vehicle.rotation.y);
+                        rp.m.position.copy(vehicle.position).add(seatPos);
+                        rp.m.position.y -= 0.9; // Sitting position (lower than standing)
+                        rp.m.visible = true; // Show player in vehicle
+                        
+                        // Rotate player to face forward in vehicle
+                        rp.m.rotation.y = vehicle.rotation.y;
+                    }
+                } else {
+                    // Normal movement interpolation
+                    rp.m.position.lerp(rp.tp, Math.min(10 * dt, 1));
+                    rp.m.visible = true;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+
+</html>
