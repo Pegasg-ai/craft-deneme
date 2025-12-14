@@ -5,6 +5,7 @@ const root = process.cwd();
 const dist = path.join(root, 'dist');
 const indexSrc = path.join(root, 'index.html');
 const vendorSrc = path.join(root, 'vendor');
+const jsSrc = path.join(root, 'js');
 
 function copyDir(srcDir, destDir) {
   if (!fs.existsSync(srcDir)) return;
@@ -37,6 +38,11 @@ function main() {
   // Bundle vendor libs for offline/Tauri builds
   if (fs.existsSync(vendorSrc)) {
     copyDir(vendorSrc, path.join(dist, 'vendor'));
+  }
+
+  // Copy JS modules
+  if (fs.existsSync(jsSrc)) {
+    copyDir(jsSrc, path.join(dist, 'js'));
   }
 }
 

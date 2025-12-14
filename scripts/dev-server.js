@@ -3,12 +3,14 @@ const path = require('path');
 const http = require('http');
 
 const root = process.cwd();
-const dist = path.join(root, 'dist');
+// Serve directly from root in dev mode to see changes immediately
+const dist = root; 
 const PORT = 3000;
 
-// Build first
-console.log('Building...');
-require('./build.js');
+// Build is not strictly necessary for dev server if serving from root, 
+// but we can keep it to ensure dist is updated for production builds.
+// console.log('Building...');
+// require('./build.js');
 
 const server = http.createServer((req, res) => {
     let filePath = path.join(dist, req.url === '/' ? 'index.html' : req.url);
