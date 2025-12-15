@@ -450,6 +450,7 @@
     <script src="./js/ores.js"></script>
     <script src="./js/crafting.js"></script>
     <script src="./js/mobs.js"></script>
+    <script src="./js/performance.js"></script>
     <script src="./js/plants.js"></script>
     <script src="./js/chunk.js"></script>
     <script src="./js/vehicle.js"></script>
@@ -1842,6 +1843,16 @@
             const dt = Math.min((t - last) / 1000, 0.1); // Cap delta time to prevent huge jumps
             last = t;
             
+            // Performance monitoring
+            if (typeof updatePerformanceStats === 'function') {
+                updatePerformanceStats(dt);
+            }
+            
+            // Game time (day/night cycle)
+            if (typeof updateGameTime === 'function') {
+                updateGameTime(dt);
+            }
+            
             // Update shader time
             const timeSec = t / 1000;
             animatedMaterials.forEach(mat => {
@@ -1859,10 +1870,30 @@
             if (USE_CHUNK_SYSTEM && controls && controls.isLocked) {
                 const p = controls.getObject().position;
                 updateChunks(p.x, p.z);
+                
+                // Update mobs
+                if (typeof updateMobs === 'function') {
+                    updateMobs(dt, { x: p.x, y: p.y, z: p.z });
+                }
+                
+                // Mob spawning
+                if (typeof updateMobSpawning === 'function' && typeof isNightTime === 'function') {
+                    updateMobSpawning({ x: p.x, y: p.y, z: p.z }, isNightTime());
+                }
             }
             
             // Update particles
             updateParticles(dt);
+            
+            // Auto quality adjustment (every 5 seconds)
+            if (typeof autoAdjustLOD === 'function' && Math.floor(t / 1000) % 5 === 0 && t % 1000 < 20) {
+                autoAdjustLOD();
+            }
+            
+            // Update performance overlay
+            if (typeof updatePerformanceOverlay === 'function') {
+                updatePerformanceOverlay();
+            }
             
             // FPS counter (update every 500ms for stability)
             fpsCounter++;
