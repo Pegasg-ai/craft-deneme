@@ -245,16 +245,26 @@ function updateInventoryUI() {
 function renderItemInSlot(slot, itemId) {
     slot.innerHTML = ''; // Clear
     if (itemId && BLOCKS[itemId]) {
-        const itemDiv = document.createElement('div');
-        itemDiv.style.width = '20px';
-        itemDiv.style.height = '20px';
         const b = BLOCKS[itemId];
-        const col = '#' + b.col.toString(16).padStart(6, '0');
+        const itemDiv = document.createElement('div');
+        itemDiv.style.width = '32px';
+        itemDiv.style.height = '32px';
         
-        // 3D-ish look css
-        itemDiv.style.backgroundColor = col;
-        itemDiv.style.boxShadow = 'inset -2px -2px 0 rgba(0,0,0,0.2), inset 2px 2px 0 rgba(255,255,255,0.2)';
-        itemDiv.style.border = '1px solid rgba(0,0,0,0.5)';
+        const url = window.getBlockTextureUrl ? window.getBlockTextureUrl(b) : null;
+        
+        if (url) {
+            itemDiv.style.backgroundImage = `url('${url}')`;
+            itemDiv.style.backgroundSize = 'contain';
+            itemDiv.style.imageRendering = 'pixelated';
+            itemDiv.style.backgroundRepeat = 'no-repeat';
+            itemDiv.style.backgroundPosition = 'center';
+        } else {
+            const col = '#' + b.col.toString(16).padStart(6, '0');
+            // 3D-ish look css
+            itemDiv.style.backgroundColor = col;
+            itemDiv.style.boxShadow = 'inset -2px -2px 0 rgba(0,0,0,0.2), inset 2px 2px 0 rgba(255,255,255,0.2)';
+            itemDiv.style.border = '1px solid rgba(0,0,0,0.5)';
+        }
         
         slot.appendChild(itemDiv);
         slot.title = b.name;
@@ -273,13 +283,25 @@ function updateHudHotbar() {
         div.id = `slot-${i+1}`;
         
         if (itemId && BLOCKS[itemId]) {
+            const b = BLOCKS[itemId];
             const col = document.createElement('div');
             col.className = 'slot-color';
-            const b = BLOCKS[itemId];
-            const baseCol = '#' + b.col.toString(16).padStart(6, '0');
-            const topCol = '#' + (BLOCKS[itemId] && BLOCKS[itemId].top ? BLOCKS[itemId].top : b.col).toString(16).padStart(6, '0');
             
-            col.style.background = `linear-gradient(135deg, ${topCol} 0%, ${baseCol} 100%)`;
+            // Use texture if available
+            const url = window.getBlockTextureUrl ? window.getBlockTextureUrl(b) : null;
+            
+            if (url) {
+                col.style.backgroundImage = `url('${url}')`;
+                col.style.backgroundSize = 'contain';
+                col.style.imageRendering = 'pixelated';
+                col.style.backgroundColor = 'transparent';
+                col.style.boxShadow = 'none';
+            } else {
+                const baseCol = '#' + b.col.toString(16).padStart(6, '0');
+                const topCol = '#' + (BLOCKS[itemId] && BLOCKS[itemId].top ? BLOCKS[itemId].top : b.col).toString(16).padStart(6, '0');
+                col.style.background = `linear-gradient(135deg, ${topCol} 0%, ${baseCol} 100%)`;
+            }
+            
             div.appendChild(col);
             div.title = b.name;
         }

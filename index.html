@@ -441,8 +441,11 @@
     <script src="./vendor/three.min.js"></script>
     <script src="./vendor/PointerLockControls.js"></script>
     <script src="./vendor/peerjs.min.js"></script>
+    <script src="./js/noise.js"></script>
     
     <!-- Game Modules -->
+    <script src="./js/blocks.js"></script>
+    <script src="./js/plants.js"></script>
     <script src="./js/vehicle.js"></script>
     <script src="./js/inventory.js"></script>
 
@@ -485,18 +488,10 @@
             }
         }
 
-        // --- EMBEDDED NOISE ---
-        const PERLIN_SIZE = 4095;
-        class NativeNoise {
-            constructor() {
-                this.p = new Uint8Array(PERLIN_SIZE + 1);
-                for (let i = 0; i <= PERLIN_SIZE; i++) this.p[i] = Math.floor(Math.random() * 256);
-            }
-            noise2D(x, y) {
-                return (Math.sin(x) * Math.cos(y) + Math.sin(x * 3) * Math.cos(y * 3) * 0.5) / 1.5;
-            }
-        }
-        const noiseGen = new NativeNoise();
+        // --- SEED & NOISE ---
+        let currentSeed = Math.floor(Math.random() * 100000);
+        initSeed(currentSeed);
+        console.log("Map Seed:", currentSeed);
 
         // --- CONFIG ---
         const GRAVITY = 25.0;
@@ -505,23 +500,11 @@
         const JUMP = 9.0;
         const P_HEIGHT = 1.6;
         const P_WIDTH = 0.6;
-        const MAX_INSTANCES = 150000; // Increased for 128x128 map
-        const MAP_SIZE = 64; // -64 to +64 = 128x128
+        const MAX_INSTANCES = 300000; 
+        const MAX_PARTICLES = 2000; // Moved here for initialization order
+        const MAP_SIZE = 128; // Increased map size (approx 256x256)
 
-        // Block Types with enhanced visuals
-        const BLOCKS = [
-            null,
-            { name: 'Grass', col: 0x4CAF50, top: 0x66BB6A, side: 0x5D4037 },
-            { name: 'Dirt', col: 0x6D4C41, top: 0x795548, side: 0x5D4037 },
-            { name: 'Stone', col: 0x757575, top: 0x9E9E9E, side: 0x616161 },
-            { name: 'Wood', col: 0x5D4037, top: 0x8D6E63, side: 0x4E342E },
-            { name: 'Leaf', col: 0x43A047, top: 0x66BB6A, side: 0x2E7D32 },
-            { name: 'Brick', col: 0xC62828, top: 0xE53935, side: 0xB71C1C },
-            { name: 'Sand', col: 0xFFEB3B, top: 0xFFF176, side: 0xFDD835 },
-            { name: 'Snow', col: 0xECEFF1, top: 0xFFFFFF, side: 0xE0E0E0 },
-            { name: 'Water', col: 0x1E88E5, top: 0x42A5F5, side: 0x1976D2 },
-            { name: 'Cobble', col: 0x607D8B, top: 0x78909C, side: 0x546E7A }
-        ];
+        // BLOCKS artık js/blocks.js'den yükleniyor (65+ blok tipi)
 
         // --- GLOBALS ---
         let camera, scene, renderer, controls;
@@ -531,7 +514,7 @@
         let instanceKeys = [];
 
         let raycaster, selectedSlot = 1;
-        let moveState = { f: 0, b: 0, l: 0, r: 0, s: 0 };
+        let moveState = { f: 0, b: 0, l: 0, r: 0, s: 0, space: 0 };
         let velocity = new THREE.Vector3();
         let direction = new THREE.Vector3();
         let onGround = false;
@@ -540,10 +523,21 @@
         let myNick = "Oyuncu", myCol = "#00a8ff";
         
         // Graphics settings
-        let graphicsQuality = 'high'; // 'high', 'medium', 'low'
-        let renderDistance = { high: 120, medium: 80, low: 50 };
-        let pixelRatio = { high: 1.5, medium: 1.2, low: 1.0 };
+        let graphicsQuality = 'medium'; // Default to medium
+        let renderDistance = { high: 160, medium: 90, low: 40 };
+        let pixelRatio = { high: 1.5, medium: 1.0, low: 0.7 };
         
+        // Shader & Optimization Globals
+        let animatedMaterials = [];
+        
+        // Particle System Globals
+        let particleMesh;
+        let particleData = [];
+
+        // Audio System Globals
+        let audioCtx;
+        let lastStepTime = 0;
+
         // Vehicle system
         let vehicles = [];
         let currentVehicle = null;
@@ -557,13 +551,140 @@
         let fpsTime = 0;
         let currentFps = 60;
 
+        // --- SHADER & OPTIMIZATION ---
+        
+        const SHADER_CHUNKS = {
+            pars: `
+                uniform float time;
+                uniform float windStrength;
+            `,
+            vertex: `
+                // Simple wind effect
+                if (windStrength > 0.0) {
+                    // Calculate world position approximation for noise consistency
+                    // instanceMatrix handles the transform of the instance
+                    vec4 worldPos = instanceMatrix * vec4(position, 1.0);
+                    
+                    // Wind calculation
+                    float wind = sin(time * 1.5 + worldPos.x * 0.5 + worldPos.z * 0.5) * windStrength;
+                    
+                    // Apply to top vertices (BoxGeometry is centered at 0,0,0, so top is y > 0)
+                    if (position.y > 0.0) {
+                        transformed.x += wind * 0.15;
+                        transformed.z += wind * 0.15;
+                        // Slight height bob for water/leaves
+                        transformed.y += sin(time * 2.0 + worldPos.x) * wind * 0.05;
+                    }
+                }
+            `
+        };
+
+        function setupMaterialOptimization(material, blockName) {
+            // Only animate Leaves and Water (Grass removed per user request)
+            const isAnimatable = ['Leaf', 'Water'].includes(blockName);
+            
+            if (isAnimatable) {
+                material.onBeforeCompile = (shader) => {
+                    shader.uniforms.time = { value: 0 };
+                    // Set initial value based on current settings
+                    const initialWind = graphicsQuality === 'low' ? 0.0 : (graphicsQuality === 'medium' ? 0.2 : 0.5);
+                    shader.uniforms.windStrength = { value: initialWind };
+                    
+                    material.userData.shader = shader;
+                    
+                    shader.vertexShader = shader.vertexShader.replace(
+                        '#include <common>',
+                        '#include <common>\n' + SHADER_CHUNKS.pars
+                    );
+                    
+                    shader.vertexShader = shader.vertexShader.replace(
+                        '#include <begin_vertex>',
+                        '#include <begin_vertex>\n' + SHADER_CHUNKS.vertex
+                    );
+                };
+                
+                // Add to list for updates
+                animatedMaterials.push(material);
+            }
+        }
+
         // START
         init();
+
+        function initAudio() {
+            if (typeof window.AudioContext === 'undefined' && typeof window.webkitAudioContext === 'undefined') {
+                console.warn("Web Audio API not supported");
+                return;
+            }
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            } catch(e) {
+                console.warn("Audio init failed:", e);
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioCtx) return;
+            // Resume context if suspended (browser policy)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'step') {
+                // Short noise burst for step
+                // Since creating noise buffer is expensive every time, we use a simple low tone
+                // or we can create a noise buffer once. Let's use a simple filtered pulse.
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'place') {
+                // High pitched click
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'break') {
+                // Crunchier sound
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+                
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+        }
 
         function init() {
             initInventoryData();
             initThree();
             initInstancing();
+            initPlantMeshes(); // Bitki sistemi
+            initParticles(); // Init particles
+            initAudio(); // Init audio
             initWorld();
             initUI();
             initInventoryUI();
@@ -634,55 +755,172 @@
             // Update pixel ratio
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, ratio));
             
+            // Update shader uniforms
+            const windVal = graphicsQuality === 'low' ? 0.0 : (graphicsQuality === 'medium' ? 0.2 : 0.5);
+            animatedMaterials.forEach(mat => {
+                if (mat.userData.shader) {
+                    mat.userData.shader.uniforms.windStrength.value = windVal;
+                }
+            });
+            
             console.log(`Graphics: ${graphicsQuality.toUpperCase()}, Fog: ${dist}, Ratio: ${ratio}`);
         }
 
         // Generate procedural texture for a block
-        function createBlockTexture(block) {
+        function createBlockTexture(block, faceType = 'side') {
             const size = 64;
             const canvas = document.createElement('canvas');
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
-            
-            // Base color
-            const baseColor = '#' + block.col.toString(16).padStart(6, '0');
-            ctx.fillStyle = baseColor;
+            ctx.imageSmoothingEnabled = false;
+
+            // Base color (placeholder while loading)
+            ctx.fillStyle = '#' + (block.col ? block.col.toString(16).padStart(6, '0') : 'FFFFFF');
             ctx.fillRect(0, 0, size, size);
-            
-            // Add noise/grain for texture
-            for (let i = 0; i < 200; i++) {
-                const x = Math.random() * size;
-                const y = Math.random() * size;
-                const brightness = Math.random() * 40 - 20;
-                ctx.fillStyle = `rgba(${brightness > 0 ? 255 : 0}, ${brightness > 0 ? 255 : 0}, ${brightness > 0 ? 255 : 0}, ${Math.abs(brightness) / 100})`;
-                ctx.fillRect(x, y, 2, 2);
-            }
-            
-            // Add subtle grid lines for block edges
-            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(1, 1, size - 2, size - 2);
-            
-            // Inner highlight
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(3, 3, size - 6, size - 6);
-            
+
             const texture = new THREE.CanvasTexture(canvas);
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
+            texture.colorSpace = THREE.SRGBColorSpace;
+
+            // Texture Mapping from GitHub Repo
+            const BASE_URL = "https://raw.githubusercontent.com/nebulimity/MoreLikeMinecraft/master/default/";
+            
+            const TEXTURE_MAP = {
+                'Grass': { top: 'default_grass.png', side: 'default_grass_side.png', bottom: 'default_dirt.png' },
+                'Dirt': 'default_dirt.png',
+                'Stone': 'default_stone.png',
+                'Cobble': 'default_cobble.png',
+                'Brick': 'default_brick.png',
+                'Sand': 'default_sand.png',
+                'Snow': 'default_snow.png',
+                'Water': 'default_water.png',
+                'OakLog': { top: 'default_tree_top.png', side: 'default_tree.png', bottom: 'default_tree_top.png' },
+                'BirchLog': { top: 'default_aspen_tree_top.png', side: 'default_aspen_tree.png', bottom: 'default_aspen_tree_top.png' },
+                'SpruceLog': { top: 'default_pine_tree_top.png', side: 'default_pine_tree.png', bottom: 'default_pine_tree_top.png' },
+                'Leaf': 'default_leaves.png'
+            };
+
+            let filename = null;
+            const map = TEXTURE_MAP[block.name];
+
+            if (map) {
+                if (typeof map === 'string') {
+                    filename = map;
+                } else if (typeof map === 'object') {
+                    // Handle top/bottom/side logic
+                    if (faceType === 'top') filename = map.top || map.side;
+                    else if (faceType === 'bottom') filename = map.bottom || map.side;
+                    else filename = map.side;
+                }
+            }
+
+            if (filename) {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = BASE_URL + filename;
+                img.onload = function() {
+                    ctx.clearRect(0, 0, size, size);
+                    
+                    // Special handling for leaves (transparency background)
+                    if (block.name === 'Leaf') {
+                        ctx.fillStyle = '#2E7D32'; // Dark green background for leaves
+                        ctx.fillRect(0, 0, size, size);
+                    }
+                    
+                    ctx.drawImage(img, 0, 0, size, size);
+                    
+                    // Optional: Overlay color for tinted blocks (like grass top biome tint)
+                    // But for now, raw texture is best for "Exact Replica"
+                    
+                    texture.needsUpdate = true;
+                };
+            } else {
+                // Fallback to procedural if no texture found (e.g. for new blocks)
+                // ... (Existing procedural code could go here if needed, but we cover most)
+            }
+
             return texture;
         }
+
+        // Global helper for inventory
+        window.getBlockTextureUrl = function(block) {
+            const BASE_URL = "https://raw.githubusercontent.com/nebulimity/MoreLikeMinecraft/master/default/";
+            const TEXTURE_MAP = {
+                'Grass': 'default_grass_side.png', // Use side for icon usually, or top? Let's use side for grass block look
+                'Dirt': 'default_dirt.png',
+                'Stone': 'default_stone.png',
+                'Cobble': 'default_cobble.png',
+                'Brick': 'default_brick.png',
+                'Sand': 'default_sand.png',
+                'Snow': 'default_snow.png',
+                'Water': 'default_water.png',
+                'OakLog': 'default_tree.png',
+                'BirchLog': 'default_aspen_tree.png',
+                'SpruceLog': 'default_pine_tree.png',
+                'Leaf': 'default_leaves.png'
+            };
+            
+            const map = TEXTURE_MAP[block.name];
+            if (map) {
+                return BASE_URL + map;
+            }
+            return null;
+        };
 
         function initInstancing() {
             const geo = new THREE.BoxGeometry(1, 1, 1);
             for (let i = 1; i < BLOCKS.length; i++) {
-                const texture = createBlockTexture(BLOCKS[i]);
-                const mat = new THREE.MeshLambertMaterial({ 
-                    map: texture,
-                    color: 0xffffff
-                });
+                const block = BLOCKS[i];
+                if (!block) continue;
+                
+                // Bitki blokları ayrı sistem ile yönetiliyor (plants.js)
+                if (block.type === BLOCK_TYPE.PLANT) {
+                    imeshes[i] = null;
+                    instanceCounts[i] = 0;
+                    instanceKeys[i] = [];
+                    continue;
+                }
+                
+                let mat;
+                
+                // Çok yüzlü bloklar (farklı üst/yan texture)
+                const multiTexBlocks = ['Grass', 'OakLog', 'BirchLog', 'SpruceLog', 'JungleLog', 'Cactus'];
+                if (multiTexBlocks.some(n => block.name.includes(n))) {
+                    const mats = [];
+                    // Order: Right, Left, Top, Bottom, Front, Back
+                    const sides = ['side', 'side', 'top', 'bottom', 'side', 'side'];
+                    for(let j=0; j<6; j++) {
+                        const tex = createBlockTexture(block, sides[j]);
+                        const m = new THREE.MeshLambertMaterial({ map: tex });
+                        // Transparan bloklar için
+                        if (block.type === BLOCK_TYPE.TRANSPARENT) {
+                            m.transparent = true;
+                            m.opacity = block.opacity || 0.9;
+                        }
+                        // Apply shader optimization (wind effects)
+                        setupMaterialOptimization(m, block.name);
+                        mats.push(m);
+                    }
+                    mat = mats;
+                } else {
+                    const texture = createBlockTexture(block, 'all');
+                    mat = new THREE.MeshLambertMaterial({ map: texture });
+                    // Transparan bloklar için
+                    if (block.type === BLOCK_TYPE.TRANSPARENT) {
+                        mat.transparent = true;
+                        mat.opacity = block.opacity || 0.9;
+                    }
+                    // Sıvı bloklar
+                    if (block.type === BLOCK_TYPE.LIQUID) {
+                        mat.transparent = true;
+                        mat.opacity = 0.7;
+                    }
+                    // Apply shader optimization (wind effects)
+                    setupMaterialOptimization(mat, block.name);
+                }
+
                 const mesh = new THREE.InstancedMesh(geo, mat, MAX_INSTANCES);
                 mesh.castShadow = false; // Disable for performance
                 mesh.receiveShadow = false;
@@ -704,17 +942,42 @@
             if (voxelData.has(key)) {
                 const old = voxelData.get(key);
                 if (old.type === type) return;
-                removeInstance(old.type, old.index);
+                
+                // Spawn particles on removal
+                if (type === 0) {
+                    const blockInfo = BLOCKS[old.type];
+                    // Use side color as approximation, or default to gray
+                    const col = blockInfo ? (blockInfo.side || blockInfo.col) : 0x888888;
+                    spawnParticles(x, y, z, col);
+                }
+
+                // Bitki mi normal blok mu?
+                const oldBlock = BLOCKS[old.type];
+                if (oldBlock && oldBlock.type === BLOCK_TYPE.PLANT) {
+                    removePlantInstance(x, y, z);
+                } else {
+                    removeInstance(old.type, old.index);
+                }
                 voxelData.delete(key);
                 if (broadcast) Broadcast({ t: 'blk', a: 'rm', x, y, z });
             }
 
             if (type > 0) {
-                const idx = addInstance(type, x, y, z);
-                if (idx !== -1) {
-                    voxelData.set(key, { type, index: idx });
-                    instanceKeys[type][idx] = key;
-                    if (broadcast) Broadcast({ t: 'blk', a: 'add', x, y, z, v: type });
+                const block = BLOCKS[type];
+                if (block && block.type === BLOCK_TYPE.PLANT) {
+                    // Bitki olarak ekle
+                    if (addPlantInstance(x, y, z, type)) {
+                        voxelData.set(key, { type, index: -1 }); // index -1 for plants
+                        if (broadcast) Broadcast({ t: 'blk', a: 'add', x, y, z, v: type });
+                    }
+                } else {
+                    // Normal blok
+                    const idx = addInstance(type, x, y, z);
+                    if (idx !== -1) {
+                        voxelData.set(key, { type, index: idx });
+                        instanceKeys[type][idx] = key;
+                        if (broadcast) Broadcast({ t: 'blk', a: 'add', x, y, z, v: type });
+                    }
                 }
             }
             
@@ -735,6 +998,7 @@
 
         function addInstance(type, x, y, z) {
             const mesh = imeshes[type];
+            if (!mesh) return -1; // Bitki blokları için mesh yok
             const cnt = instanceCounts[type];
             if (cnt >= MAX_INSTANCES) return -1;
             dummy.position.set(x, y, z);
@@ -748,6 +1012,7 @@
 
         function removeInstance(type, idx) {
             const mesh = imeshes[type];
+            if (!mesh) return; // Bitki blokları için mesh yok
             const cnt = instanceCounts[type];
             const last = cnt - 1;
 
@@ -782,57 +1047,275 @@
             // 128x128 Map with optimized terrain
             const startTime = performance.now();
             let blockCount = 0;
+            let plantCount = 0;
+            
+            // Optimization: Skip caves on low settings
+            const enableCaves = graphicsQuality !== 'low';
             
             for (let x = -MAP_SIZE; x <= MAP_SIZE; x++) {
                 for (let z = -MAP_SIZE; z <= MAP_SIZE; z++) {
                     // Multi-octave noise for more interesting terrain
-                    let n1 = noiseGen.noise2D(x / 25, z / 25);
-                    let n2 = noiseGen.noise2D(x / 10, z / 10) * 0.5;
-                    let n = (n1 + n2) / 1.5;
+                    let n1 = noise2D(x / 60, z / 60); 
+                    let n2 = noise2D(x / 20, z / 20) * 0.2;
+                    let n = (n1 + n2);
                     
-                    let h = Math.floor((n + 1) * 5) + 2; // Height 2-12
-                    
-                    // Only place surface blocks (optimization: skip underground)
-                    // Underground blocks aren't visible anyway
-                    const surfaceY = h - 1;
+                    // Biome noise
+                    let biome = noise2D(x / 150, z / 150);
+                    // Sıcaklık noise
+                    let temp = noise2D(x / 200 + 500, z / 200 + 500);
+
+                    // Height 4-12 (Flatter)
+                    let h = Math.floor((n + 1) * 4) + 4; 
                     
                     // Bedrock layer
-                    setBlock(x, 0, z, 3, false); // Stone at bottom
+                    setBlock(x, 0, z, 63, false); // Bedrock at bottom
                     blockCount++;
-                    
-                    // Surface block
-                    if (h > 1) {
-                        let surfaceType = 1; // Grass
-                        if (h <= 2) surfaceType = 7; // Sand near water
-                        else if (h > 8) surfaceType = 8; // Snow on peaks
-                        setBlock(x, surfaceY, z, surfaceType, false);
-                        blockCount++;
+
+                    // Fill from bottom to surface
+                    for (let y = 1; y < h; y++) {
+                        let type = 3; // Stone default
                         
-                        // One dirt layer below surface
-                        if (surfaceY > 1) {
-                            setBlock(x, surfaceY - 1, z, 2, false);
-                            blockCount++;
+                        // Cave generation (3D Noise)
+                        if (enableCaves && y > 1 && y < h - 2) {
+                            const caveNoise = noise3D(x / 20, y / 20, z / 20);
+                            if (caveNoise > 0.4) continue; // Skip block (Air)
+                        }
+                        
+                        // Ore generation (derin katmanlarda)
+                        if (y < h - 3) {
+                            const oreRoll = Math.abs((x * 7919 + y * 6997 + z * 5653) % 10000) / 10000;
+                            // Cevher kontrolü (derinlik bazlı)
+                            if (y <= 16 && oreRoll < 0.002) type = 24; // Diamond
+                            else if (y <= 16 && oreRoll < 0.010) type = 26; // Redstone
+                            else if (y <= 32 && oreRoll < 0.006) type = 23; // Gold
+                            else if (y <= 32 && oreRoll < 0.010) type = 27; // Lapis
+                            else if (y <= 64 && oreRoll < 0.015) type = 22; // Iron
+                            else if (y <= 96 && oreRoll < 0.012) type = 28; // Copper
+                            else if (oreRoll < 0.020) type = 21; // Coal
+                        }
+                        
+                        // Top 3 layers logic
+                        if (y === h - 1) {
+                            // Surface
+                            if (h <= 5) type = 7; // Sand near water level
+                            else if (h > 10) type = 8; // Snow on peaks
+                            else type = 1; // Grass
+                        } else if (y >= h - 4) {
+                            // Dirt layer below surface
+                            type = 2; 
+                        }
+                        
+                        setBlock(x, y, z, type, false);
+                        blockCount++;
+                    }
+                    
+                    // Surface decorations (çiçek, çimen, mantar)
+                    if (h > 5 && h <= 10) {
+                        const decorRoll = Math.abs((x * 3571 + z * 2953) % 1000) / 1000;
+                        
+                        // Çimen (yaygın)
+                        if (decorRoll < 0.15) {
+                            setBlock(x, h, z, 44, false); // TallGrass
+                            plantCount++;
+                        }
+                        // Çiçekler (orta sıklık)
+                        else if (decorRoll < 0.20) {
+                            // Biome'a göre farklı çiçek
+                            let flowerId = 36 + Math.floor(Math.abs((x * 123 + z * 456) % 6)); // 36-41 arası
+                            setBlock(x, h, z, flowerId, false);
+                            plantCount++;
+                        }
+                        // Eğrelti (ormanlık alanda)
+                        else if (decorRoll < 0.22 && biome > 0) {
+                            setBlock(x, h, z, 45, false); // Fern
+                            plantCount++;
+                        }
+                        // Mantar (gölgeli, nadir)
+                        else if (decorRoll < 0.225) {
+                            const mushroomType = Math.random() > 0.5 ? 47 : 48;
+                            setBlock(x, h, z, mushroomType, false);
+                            plantCount++;
+                        }
+                    }
+                    // Çöl/kumlu alanda ölü çalı ve kaktüs
+                    else if (h <= 5 && h > 3) {
+                        const desertRoll = Math.abs((x * 7877 + z * 6991) % 1000) / 1000;
+                        if (desertRoll < 0.02) {
+                            setBlock(x, h, z, 46, false); // DeadBush
+                            plantCount++;
+                        } else if (desertRoll < 0.03) {
+                            // Kaktüs (2-3 blok yüksekliğinde)
+                            const cactusHeight = 1 + Math.floor(Math.abs((x * z) % 3));
+                            for (let cy = 0; cy < cactusHeight; cy++) {
+                                setBlock(x, h + cy, z, 49, false); // Cactus
+                            }
                         }
                     }
                     
-                    // Trees (sparse)
-                    if (x % 8 === 0 && z % 8 === 0 && n > 0.2 && h > 3) {
-                        tree(x, h, z);
+                    // Trees
+                    // Use pseudo-random based on position to be deterministic but scattered
+                    if (Math.abs(x * z * 123) % 100 < 2 && h > 5 && h <= 10) {
+                        let treeType = 'oak';
+                        if (biome > 0.2) treeType = 'spruce';
+                        else if (biome < -0.2) treeType = 'birch';
+                        
+                        tree(x, h, z, treeType);
                     }
                 }
             }
             
-            console.log(`World generated: ${blockCount} blocks in ${(performance.now() - startTime).toFixed(0)}ms`);
+            console.log(`World generated: ${blockCount} blocks, ${plantCount} plants in ${(performance.now() - startTime).toFixed(0)}ms`);
             
             // Spawn a car near spawn point
             spawnVehicle(5, 10, 5);
         }
-        function tree(x, y, z) {
-            for (let i = 0; i < 4; i++) setBlock(x, y + i, z, 4, false);
-            for (let lx = x - 2; lx <= x + 2; lx++)
-                for (let lz = z - 2; lz <= z + 2; lz++)
-                    if (lx !== x || lz !== z) setBlock(lx, y + 3, lz, 5, false);
-            setBlock(x, y + 4, z, 5, false);
+
+        function tree(x, y, z, type = 'oak') {
+            let logId = 4; // Oak
+            if (type === 'birch') logId = 11;
+            if (type === 'spruce') logId = 12;
+
+            if (type === 'spruce') {
+                // Tall pine style
+                const height = 6 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < height; i++) setBlock(x, y + i, z, logId, false);
+                
+                // Cone leaves
+                for (let i = 2; i < height; i++) {
+                    const radius = Math.floor((height - i) / 3) + 1;
+                    for (let lx = x - radius; lx <= x + radius; lx++) {
+                        for (let lz = z - radius; lz <= z + radius; lz++) {
+                            if (Math.abs(lx - x) + Math.abs(lz - z) <= radius + 0.5) {
+                                if (lx !== x || lz !== z || i === height-1) 
+                                    setBlock(lx, y + i, lz, 5, false);
+                            }
+                        }
+                    }
+                }
+                setBlock(x, y + height, z, 5, false);
+            } else if (type === 'birch') {
+                // Tall straight
+                const height = 5 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < height; i++) setBlock(x, y + i, z, logId, false);
+                
+                // Leaves at top
+                for (let lx = x - 2; lx <= x + 2; lx++)
+                    for (let lz = z - 2; lz <= z + 2; lz++)
+                        if (lx !== x || lz !== z) setBlock(lx, y + height - 1, lz, 5, false);
+                setBlock(x, y + height, z, 5, false);
+            } else {
+                // Oak (Standard)
+                const height = 4 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < height; i++) setBlock(x, y + i, z, logId, false);
+                
+                for (let lx = x - 2; lx <= x + 2; lx++)
+                    for (let lz = z - 2; lz <= z + 2; lz++)
+                        if (lx !== x || lz !== z) setBlock(lx, y + height - 1, lz, 5, false);
+                setBlock(x, y + height, z, 5, false);
+            }
+        }
+
+        // --- PARTICLE SYSTEM ---
+        // particleMesh and particleData moved to globals
+        // MAX_PARTICLES moved to top
+        
+        function initParticles() {
+            const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            particleMesh = new THREE.InstancedMesh(geo, mat, MAX_PARTICLES);
+            particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            particleMesh.count = 0;
+            scene.add(particleMesh);
+            
+            // Initialize data pool
+            for(let i=0; i<MAX_PARTICLES; i++) {
+                particleData.push({
+                    active: false,
+                    life: 0,
+                    velocity: new THREE.Vector3(),
+                    position: new THREE.Vector3()
+                });
+            }
+        }
+        
+        function spawnParticles(x, y, z, colorHex) {
+            // Determine count based on graphics quality
+            let count = graphicsQuality === 'high' ? 12 : (graphicsQuality === 'medium' ? 6 : 2);
+            
+            const color = new THREE.Color(colorHex || 0xffffff);
+            
+            for(let i=0; i<count; i++) {
+                // Find free slot
+                const p = particleData.find(d => !d.active);
+                if(!p) break; // Pool full
+                
+                p.active = true;
+                p.life = 1.0 + Math.random() * 0.5; // 1-1.5 seconds life
+                
+                // Random position within block
+                p.position.set(
+                    x + (Math.random() - 0.5) * 0.8,
+                    y + (Math.random() - 0.5) * 0.8,
+                    z + (Math.random() - 0.5) * 0.8
+                );
+                
+                // Explosion velocity
+                p.velocity.set(
+                    (Math.random() - 0.5) * 4,
+                    (Math.random() * 3) + 1, // Upward bias
+                    (Math.random() - 0.5) * 4
+                );
+                
+                // Set color for this instance
+                particleMesh.setColorAt(particleData.indexOf(p), color);
+            }
+            
+            particleMesh.instanceColor.needsUpdate = true;
+        }
+        
+        function updateParticles(dt) {
+            if(!particleMesh) return;
+            
+            let activeCount = 0;
+            const dummy = new THREE.Object3D();
+            
+            particleData.forEach((p, i) => {
+                if(!p.active) return;
+                
+                // Physics
+                p.velocity.y -= 9.8 * dt; // Gravity
+                p.position.addScaledVector(p.velocity, dt);
+                
+                // Floor collision (simple)
+                if(p.position.y < 0) {
+                    p.position.y = 0;
+                    p.velocity.y *= -0.5; // Bounce
+                    p.velocity.x *= 0.8; // Friction
+                    p.velocity.z *= 0.8;
+                }
+                
+                // Life
+                p.life -= dt;
+                if(p.life <= 0) {
+                    p.active = false;
+                    // Move offscreen
+                    dummy.position.set(0, -1000, 0);
+                    dummy.updateMatrix();
+                    particleMesh.setMatrixAt(i, dummy.matrix);
+                } else {
+                    // Update visual
+                    dummy.position.copy(p.position);
+                    // Scale down as it dies
+                    const scale = p.life; 
+                    dummy.scale.set(scale, scale, scale);
+                    dummy.updateMatrix();
+                    particleMesh.setMatrixAt(i, dummy.matrix);
+                    activeCount++;
+                }
+            });
+            
+            particleMesh.count = MAX_PARTICLES; // Always draw full buffer, but inactive ones are hidden
+            particleMesh.instanceMatrix.needsUpdate = true;
         }
 
         function initUI() {
@@ -847,6 +1330,13 @@
             // so tabs/color picker appear "unclickable". We must unlock when showing the menu.
             const onEscape = (e) => {
                 if (e.code !== 'Escape' || e.repeat) return;
+                
+                // If inventory is open, close it first
+                if (typeof isInventoryOpen !== 'undefined' && isInventoryOpen) {
+                    toggleInventory();
+                    return;
+                }
+
                 const overlay = document.getElementById('menu-overlay');
                 if (!overlay) return;
 
@@ -871,6 +1361,9 @@
             
             // Simple ESC menu handler using unlock event
             controls.addEventListener('unlock', () => {
+                // Don't show menu if inventory is open
+                if (typeof isInventoryOpen !== 'undefined' && isInventoryOpen) return;
+
                 // When pointer unlocks, show menu
                 const overlay = document.getElementById('menu-overlay');
                 if (overlay) overlay.style.display = 'flex';
@@ -968,7 +1461,7 @@
                 case 'KeyS': moveState.b = d; break;
                 case 'KeyA': moveState.l = d; break;
                 case 'KeyD': moveState.r = d; break;
-                case 'Space': if (d && onGround) velocity.y = JUMP; break;
+                case 'Space': moveState.space = d; break;
                 case 'ShiftLeft': moveState.s = d; break;
                 case 'KeyF':
                     if (d) {
@@ -1006,6 +1499,7 @@
 
                 if (e.button === 0) { // Left: Break
                     setBlock(rx, ry, rz, 0);
+                    playSound('break');
                 }
                 else if (e.button === 1) { // Middle: Pick
                     const k = `${rx},${ry},${rz}`;
@@ -1024,6 +1518,7 @@
                     const type = hotbar[selectedSlot - 1];
                     if (type > 0 && !aabbTest(controls.getObject().position, bx, by, bz)) {
                         setBlock(bx, by, bz, type);
+                        playSound('place');
                     }
                 }
             }
@@ -1054,6 +1549,17 @@
 
             // Apply X/Z Move
             p.x += dx.x; p.z += dx.z;
+            
+            // Footstep sounds
+            if (onGround && (moveState.f || moveState.b || moveState.l || moveState.r)) {
+                const now = performance.now();
+                const stepInterval = moveState.s ? 300 : 500; // Faster steps when sprinting
+                if (now - lastStepTime > stepInterval) {
+                    playSound('step');
+                    lastStepTime = now;
+                }
+            }
+            
             if (checkCol(p)) {
                 // Simple separate axis resolution basic
                 p.x -= dx.x;
@@ -1074,8 +1580,16 @@
                 p.y -= velocity.y * dt;
                 if (velocity.y < 0) {
                     onGround = true;
+                    // Auto-jump (Bunny hopping)
+                    if (moveState.space) {
+                        velocity.y = JUMP;
+                        onGround = false;
+                    } else {
+                        velocity.y = 0;
+                    }
+                } else {
+                    velocity.y = 0;
                 }
-                velocity.y = 0;
             }
             if (p.y < -30) { p.set(0, 30, 0); velocity.set(0, 0, 0); }
         }
@@ -1356,6 +1870,22 @@
             const t = performance.now();
             const dt = Math.min((t - last) / 1000, 0.1); // Cap delta time to prevent huge jumps
             last = t;
+            
+            // Update shader time
+            const timeSec = t / 1000;
+            animatedMaterials.forEach(mat => {
+                if (mat.userData.shader) {
+                    mat.userData.shader.uniforms.time.value = timeSec;
+                }
+            });
+            
+            // Update plants (wind animation)
+            if (typeof updatePlants === 'function') {
+                updatePlants(timeSec);
+            }
+            
+            // Update particles
+            updateParticles(dt);
             
             // FPS counter (update every 500ms for stability)
             fpsCounter++;
