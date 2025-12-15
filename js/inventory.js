@@ -1,27 +1,70 @@
-// Inventory System (Survival Style Visuals + Creative Functionality)
+// ========================================
+// INVENTORY.JS - 46-Slot Envanter Sistemi
+// Minecraft tarzı Survival envanter
+// ========================================
 
 let isInventoryOpen = false;
-const HOTBAR_SIZE = 9;
-const INVENTORY_SIZE = 27;
 
-// Data
-let hotbar = new Array(HOTBAR_SIZE).fill(0);
-let mainInventory = new Array(INVENTORY_SIZE).fill(0); // The 3x9 grid
+// Slot sayıları
+const HOTBAR_SIZE = 9;
+const INVENTORY_SIZE = 27;  // 3x9 ana envanter
+const ARMOR_SIZE = 4;       // Kask, Göğüslük, Pantolon, Bot
+const OFFHAND_SIZE = 1;     // Sol el
+const CRAFTING_SIZE = 4;    // 2x2 crafting grid
+const CRAFTING_OUTPUT = 1;  // Crafting sonucu
+
+// Total: 9 + 27 + 4 + 1 + 4 + 1 = 46 slots
+
+// Envanter verileri
+let hotbar = new Array(HOTBAR_SIZE).fill(null);
+let mainInventory = new Array(INVENTORY_SIZE).fill(null);
+let armorSlots = new Array(ARMOR_SIZE).fill(null);
+let offhandSlot = null;
+let craftingGrid = new Array(CRAFTING_SIZE).fill(null);
+let craftingOutput = null;
+
+// Stack sistemi - her slot { id: number, count: number, data?: any }
+function createStack(id, count = 1, data = null) {
+    if (!id || id === 0) return null;
+    return { id, count, data };
+}
+
+// Max stack boyutları
+const MAX_STACK_SIZE = {
+    default: 64,
+    tool: 1,      // Aletler stacklenmiyor
+    armor: 1,     // Zırhlar stacklenmiyor
+    bucket: 16,
+    snowball: 16,
+    egg: 16,
+    enderpearl: 16
+};
+
+function getMaxStackSize(itemId) {
+    // Tool ve armor kontrolü (ID bazlı)
+    if (itemId >= 100 && itemId < 200) return 1; // Tools
+    if (itemId >= 200 && itemId < 300) return 1; // Armor
+    return MAX_STACK_SIZE.default;
+}
 
 // Hover state
-let hoveredSlot = null; // { index: number, type: 'inv' | 'hot' }
+let hoveredSlot = null;
+let heldItem = null; // Tuttuğumuz item (drag için)
 
 function initInventoryData() {
-    // Initialize hotbar
-    // Initialize main inventory with all available blocks
+    // Creative mod - tüm blokları envantere ekle
     if (typeof BLOCKS !== 'undefined') {
-        // Fill main inventory with blocks
-        for(let i=1; i<BLOCKS.length; i++) {
-            if (i-1 < INVENTORY_SIZE) {
-                mainInventory[i-1] = i;
-            }
+        for (let i = 1; i < Math.min(BLOCKS.length, INVENTORY_SIZE + 1); i++) {
+            mainInventory[i - 1] = createStack(i, 64);
         }
     }
+    
+    // Başlangıç hotbar
+    hotbar[0] = createStack(3, 64);  // Stone
+    hotbar[1] = createStack(10, 64); // Planks
+    hotbar[2] = createStack(14, 64); // Bricks
+    hotbar[3] = createStack(4, 64);  // OakLog
+    hotbar[4] = createStack(1, 64);  // Grass
 }
 
 function initInventoryUI() {
@@ -227,28 +270,50 @@ function updateInventoryUI() {
     // Update Main Inventory
     const invSlots = document.querySelectorAll('.inv-slot[data-type="inv"]');
     invSlots.forEach((slot, i) => {
-        const itemId = mainInventory[i];
-        renderItemInSlot(slot, itemId);
+        const item = mainInventory[i];
+        renderItemInSlot(slot, item);
     });
     
     // Update Hotbar
     const hotSlots = document.querySelectorAll('.inv-slot[data-type="hot"]');
     hotSlots.forEach((slot, i) => {
-        const itemId = hotbar[i];
-        renderItemInSlot(slot, itemId);
+        const item = hotbar[i];
+        renderItemInSlot(slot, item);
     });
+    
+    // Update Armor slots
+    const armorSlotsElem = document.querySelectorAll('.inv-slot[data-type="armor"]');
+    armorSlotsElem.forEach((slot, i) => {
+        const item = armorSlots[i];
+        renderItemInSlot(slot, item);
+    });
+    
+    // Update Crafting slots
+    const craftSlots = document.querySelectorAll('.inv-slot[data-type="craft"]');
+    craftSlots.forEach((slot, i) => {
+        const item = craftingGrid[i];
+        renderItemInSlot(slot, item);
+    });
+    
+    // Update Crafting result
+    const resultSlot = document.querySelector('.inv-slot[data-type="result"]');
+    if (resultSlot) {
+        renderItemInSlot(resultSlot, craftingOutput);
+    }
     
     // Also update main HUD hotbar
     updateHudHotbar();
 }
 
-function renderItemInSlot(slot, itemId) {
+function renderItemInSlot(slot, item) {
     slot.innerHTML = ''; // Clear
-    if (itemId && BLOCKS[itemId]) {
-        const b = BLOCKS[itemId];
+    
+    if (item && item.id && BLOCKS[item.id]) {
+        const b = BLOCKS[item.id];
         const itemDiv = document.createElement('div');
         itemDiv.style.width = '32px';
         itemDiv.style.height = '32px';
+        itemDiv.style.position = 'relative';
         
         const url = window.getBlockTextureUrl ? window.getBlockTextureUrl(b) : null;
         
@@ -260,14 +325,29 @@ function renderItemInSlot(slot, itemId) {
             itemDiv.style.backgroundPosition = 'center';
         } else {
             const col = '#' + b.col.toString(16).padStart(6, '0');
-            // 3D-ish look css
             itemDiv.style.backgroundColor = col;
             itemDiv.style.boxShadow = 'inset -2px -2px 0 rgba(0,0,0,0.2), inset 2px 2px 0 rgba(255,255,255,0.2)';
             itemDiv.style.border = '1px solid rgba(0,0,0,0.5)';
         }
         
+        // Stack count görüntüle
+        if (item.count > 1) {
+            const countDiv = document.createElement('div');
+            countDiv.className = 'item-count';
+            countDiv.style.position = 'absolute';
+            countDiv.style.bottom = '-2px';
+            countDiv.style.right = '-2px';
+            countDiv.style.color = '#fff';
+            countDiv.style.fontSize = '12px';
+            countDiv.style.fontWeight = 'bold';
+            countDiv.style.textShadow = '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000';
+            countDiv.style.fontFamily = 'monospace';
+            countDiv.innerText = item.count;
+            itemDiv.appendChild(countDiv);
+        }
+        
         slot.appendChild(itemDiv);
-        slot.title = b.name;
+        slot.title = b.name + (item.count > 1 ? ` (${item.count})` : '');
     }
 }
 
@@ -277,15 +357,16 @@ function updateHudHotbar() {
     hb.innerHTML = '';
     
     for (let i = 0; i < Math.min(hotbar.length, 9); i++) {
-        const itemId = hotbar[i];
+        const item = hotbar[i];
         const div = document.createElement('div');
         div.className = (i + 1 === selectedSlot) ? 'slot active' : 'slot';
         div.id = `slot-${i+1}`;
         
-        if (itemId && BLOCKS[itemId]) {
-            const b = BLOCKS[itemId];
+        if (item && item.id && BLOCKS[item.id]) {
+            const b = BLOCKS[item.id];
             const col = document.createElement('div');
             col.className = 'slot-color';
+            col.style.position = 'relative';
             
             // Use texture if available
             const url = window.getBlockTextureUrl ? window.getBlockTextureUrl(b) : null;
@@ -298,8 +379,22 @@ function updateHudHotbar() {
                 col.style.boxShadow = 'none';
             } else {
                 const baseCol = '#' + b.col.toString(16).padStart(6, '0');
-                const topCol = '#' + (BLOCKS[itemId] && BLOCKS[itemId].top ? BLOCKS[itemId].top : b.col).toString(16).padStart(6, '0');
+                const topCol = '#' + (b.top ? b.top : b.col).toString(16).padStart(6, '0');
                 col.style.background = `linear-gradient(135deg, ${topCol} 0%, ${baseCol} 100%)`;
+            }
+            
+            // Stack count in HUD
+            if (item.count > 1) {
+                const countSpan = document.createElement('span');
+                countSpan.style.position = 'absolute';
+                countSpan.style.bottom = '0';
+                countSpan.style.right = '2px';
+                countSpan.style.fontSize = '10px';
+                countSpan.style.fontWeight = 'bold';
+                countSpan.style.color = '#fff';
+                countSpan.style.textShadow = '1px 1px 0 #000';
+                countSpan.innerText = item.count;
+                col.appendChild(countSpan);
             }
             
             div.appendChild(col);
@@ -329,50 +424,174 @@ function toggleInventory() {
 let selectedSlotIndex = -1;
 let selectedSlotType = null;
 
+// Slot array'ini tipine göre al
+function getSlotArray(type) {
+    switch(type) {
+        case 'inv': return mainInventory;
+        case 'hot': return hotbar;
+        case 'armor': return armorSlots;
+        case 'craft': return craftingGrid;
+        default: return null;
+    }
+}
+
 function handleSlotClick(index, type) {
+    // Crafting output özel işlem
+    if (type === 'result') {
+        if (craftingOutput) {
+            // Crafting sonucunu al ve envantere ekle
+            addItemToInventory(craftingOutput);
+            craftingOutput = null;
+            // Crafting grid'i temizle
+            for (let i = 0; i < craftingGrid.length; i++) {
+                if (craftingGrid[i] && craftingGrid[i].count > 0) {
+                    craftingGrid[i].count--;
+                    if (craftingGrid[i].count <= 0) craftingGrid[i] = null;
+                }
+            }
+            updateCraftingResult();
+            updateInventoryUI();
+        }
+        return;
+    }
+    
     if (selectedSlotIndex === -1) {
-        // Select
+        // Slot seç
+        const arr = getSlotArray(type);
+        if (!arr || !arr[index]) return; // Boş slot seçilemez
+        
         selectedSlotIndex = index;
         selectedSlotType = type;
         // Visual feedback
         const slot = document.querySelector(`.inv-slot[data-type="${type}"][data-index="${index}"]`);
         if(slot) slot.style.borderColor = '#ffff00';
     } else {
-        // Swap
-        const sourceArr = selectedSlotType === 'inv' ? mainInventory : hotbar;
-        const targetArr = type === 'inv' ? mainInventory : hotbar;
+        // Swap veya stack birleştirme
+        const sourceArr = getSlotArray(selectedSlotType);
+        const targetArr = getSlotArray(type);
         
-        const temp = sourceArr[selectedSlotIndex];
-        sourceArr[selectedSlotIndex] = targetArr[index];
-        targetArr[index] = temp;
-        
-        // Reset selection
-        // Reset border color of previous selection
-        const prevSlot = document.querySelector(`.inv-slot[data-type="${selectedSlotType}"][data-index="${selectedSlotIndex}"]`);
-        if(prevSlot) {
-            prevSlot.style.border = '2px solid #373737';
-            prevSlot.style.borderBottom = '2px solid #fff';
-            prevSlot.style.borderRight = '2px solid #fff';
+        if (!sourceArr || !targetArr) {
+            resetSlotSelection();
+            return;
         }
         
-        selectedSlotIndex = -1;
-        selectedSlotType = null;
+        const sourceItem = sourceArr[selectedSlotIndex];
+        const targetItem = targetArr[index];
+        
+        // Aynı item mi? Stack birleştir
+        if (sourceItem && targetItem && sourceItem.id === targetItem.id) {
+            const maxStack = getMaxStackSize(sourceItem.id);
+            const canAdd = maxStack - targetItem.count;
+            const toAdd = Math.min(canAdd, sourceItem.count);
+            
+            targetItem.count += toAdd;
+            sourceItem.count -= toAdd;
+            
+            if (sourceItem.count <= 0) {
+                sourceArr[selectedSlotIndex] = null;
+            }
+        } else {
+            // Normal swap
+            sourceArr[selectedSlotIndex] = targetItem;
+            targetArr[index] = sourceItem;
+        }
+        
+        resetSlotSelection();
+        updateCraftingResult();
         updateInventoryUI();
     }
 }
 
+function resetSlotSelection() {
+    const prevSlot = document.querySelector(`.inv-slot[data-type="${selectedSlotType}"][data-index="${selectedSlotIndex}"]`);
+    if(prevSlot) {
+        prevSlot.style.border = '2px solid #373737';
+        prevSlot.style.borderBottom = '2px solid #fff';
+        prevSlot.style.borderRight = '2px solid #fff';
+    }
+    selectedSlotIndex = -1;
+    selectedSlotType = null;
+}
+
+// Envantere item ekle (first available slot)
+function addItemToInventory(item) {
+    if (!item) return false;
+    
+    const maxStack = getMaxStackSize(item.id);
+    let remaining = item.count;
+    
+    // Önce mevcut stack'lere ekle
+    for (let i = 0; i < hotbar.length && remaining > 0; i++) {
+        if (hotbar[i] && hotbar[i].id === item.id && hotbar[i].count < maxStack) {
+            const canAdd = Math.min(maxStack - hotbar[i].count, remaining);
+            hotbar[i].count += canAdd;
+            remaining -= canAdd;
+        }
+    }
+    for (let i = 0; i < mainInventory.length && remaining > 0; i++) {
+        if (mainInventory[i] && mainInventory[i].id === item.id && mainInventory[i].count < maxStack) {
+            const canAdd = Math.min(maxStack - mainInventory[i].count, remaining);
+            mainInventory[i].count += canAdd;
+            remaining -= canAdd;
+        }
+    }
+    
+    // Boş slotlara ekle
+    for (let i = 0; i < hotbar.length && remaining > 0; i++) {
+        if (!hotbar[i]) {
+            const toAdd = Math.min(maxStack, remaining);
+            hotbar[i] = createStack(item.id, toAdd);
+            remaining -= toAdd;
+        }
+    }
+    for (let i = 0; i < mainInventory.length && remaining > 0; i++) {
+        if (!mainInventory[i]) {
+            const toAdd = Math.min(maxStack, remaining);
+            mainInventory[i] = createStack(item.id, toAdd);
+            remaining -= toAdd;
+        }
+    }
+    
+    return remaining === 0;
+}
+
 function handleHotbarSwap(hovered, targetHotbarIndex) {
-    const sourceArr = hovered.type === 'inv' ? mainInventory : hotbar;
+    const sourceArr = getSlotArray(hovered.type);
+    if (!sourceArr) return;
+    
     const sourceIndex = hovered.index;
-    
-    // Target is always hotbar
-    const targetArr = hotbar;
-    const targetIndex = targetHotbarIndex;
-    
-    // Swap
     const temp = sourceArr[sourceIndex];
-    sourceArr[sourceIndex] = targetArr[targetIndex];
-    targetArr[targetIndex] = temp;
+    sourceArr[sourceIndex] = hotbar[targetHotbarIndex];
+    hotbar[targetHotbarIndex] = temp;
     
     updateInventoryUI();
 }
+// Crafting sonucunu güncelle (crafting.js entegrasyonu)
+function updateCraftingResult() {
+    // Crafting.js varsa onu kullan
+    if (typeof getCraftingResult === 'function') {
+        craftingOutput = getCraftingResult(craftingGrid);
+    } else {
+        craftingOutput = null;
+    }
+}
+
+// Seçili blok ID'sini al (block yerleştirme için)
+function getSelectedBlockId() {
+    const item = hotbar[selectedSlot - 1];
+    return item ? item.id : 0;
+}
+
+// Seçili slottan 1 adet item azalt
+function consumeSelectedItem() {
+    const item = hotbar[selectedSlot - 1];
+    if (item && item.count > 0) {
+        item.count--;
+        if (item.count <= 0) {
+            hotbar[selectedSlot - 1] = null;
+        }
+        updateHudHotbar();
+    }
+}
+
+console.log("[Inventory] 46-slot inventory system loaded");
