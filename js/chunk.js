@@ -168,6 +168,12 @@ function generateChunk(chunk) {
         }
     }
     
+    // Cevher damarları oluştur (ores.js varsa)
+    if (typeof generateOresForChunk === 'function') {
+        const chunkSeed = chunk.cx * 341873128712 + chunk.cz * 132897987541;
+        generateOresForChunk(chunk, chunkSeed);
+    }
+    
     chunk.state = CHUNK_STATE.LOADED;
 }
 
