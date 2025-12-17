@@ -300,10 +300,21 @@ function updatePerformanceOverlay() {
     
     const mem = getMemoryUsage();
     
+    // Chunk loading status
+    let chunkStatus = '';
+    if (typeof getChunkLoadingStatus === 'function') {
+        const status = getChunkLoadingStatus();
+        if (status.isInitialLoad) {
+            chunkStatus = `<div style="color:#ff0">Loading... (${status.loadRadius}/${4})</div>`;
+        }
+        chunkStatus += `<div>Queue: ${status.queueLength}</div>`;
+    }
+    
     let html = `
         <div style="color:${perfStats.fps < 30 ? '#f00' : '#0f0'}">FPS: ${perfStats.fps} (avg: ${getAverageFPS()})</div>
         <div>Frame: ${perfStats.frameTime.toFixed(2)}ms</div>
         <div>Chunks: ${perfStats.chunks}</div>
+        ${chunkStatus}
         <div>Mobs: ${perfStats.mobs}</div>
     `;
     

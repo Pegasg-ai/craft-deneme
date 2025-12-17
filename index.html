@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Voxel Velocity - Final</title>
+    <link rel="stylesheet" href="./css/main-menu.css">
     <style>
         :root {
             --ui-font: 'Segoe UI', sans-serif;
@@ -40,25 +41,35 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
             z-index: 10;
         }
 
+        /* Horizontal Line */
+        #crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 24px;
+            height: 2px;
+            background-color: rgba(255, 255, 255, 0.9);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 2px rgba(0,0,0,0.8);
+        }
+
+        /* Vertical Line */
         #crosshair::after {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 4px;
-            height: 4px;
-            background: white;
-            border-radius: 50%;
+            width: 2px;
+            height: 24px;
+            background-color: rgba(255, 255, 255, 0.9);
             transform: translate(-50%, -50%);
+            box-shadow: 0 0 2px rgba(0,0,0,0.8);
         }
 
         #hud {
@@ -366,6 +377,25 @@
 
 <body>
     <div id="crosshair"></div>
+    <!-- Chunk Loading UI - Sol üst köşe, liste şeklinde -->
+    <div id="chunk-loading-container" style="position: fixed; top: 60px; left: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 100; pointer-events: none;">
+        <div id="loading-indicator" style="display: none; background: linear-gradient(135deg, rgba(30,40,50,0.92), rgba(20,30,40,0.88)); color: #4CAF50; padding: 10px 14px; border-radius: 10px; font-family: var(--ui-font); font-size: 13px; border: 1px solid rgba(76,175,80,0.3); box-shadow: 0 4px 15px rgba(0,0,0,0.3); backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <div id="loading-spinner" style="width: 14px; height: 14px; border: 2px solid rgba(76,175,80,0.3); border-top-color: #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <span id="loading-text" style="font-weight: 500;">Dünya yükleniyor...</span>
+            </div>
+            <div style="width: 160px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                <div id="loading-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); border-radius: 2px; transition: width 0.3s ease-out;"></div>
+            </div>
+        </div>
+        <!-- Performans bilgisi -->
+        <div id="perf-stats" style="display: none; background: rgba(30,40,50,0.85); color: #8BC34A; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-family: monospace; border: 1px solid rgba(139,195,74,0.2);">
+            <div>🎮 <span id="perf-fps">--</span> FPS</div>
+            <div>📦 <span id="perf-chunks">--</span> chunks</div>
+            <div>🎯 <span id="perf-visible">--</span> görünür</div>
+        </div>
+    </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     <div id="hud">
         FPS: <span id="fps">0</span> | Blok: <span id="blk">0</span><br>
         <span style="color:#aaa; font-size:12px">L: Kır | R: Koy | Orta: Seç | E: Envanter | F: Araç | Shift: Koş</span>
@@ -373,72 +403,71 @@
 
     <div id="hotbar"></div>
 
-    <div id="menu-overlay" style="display: flex;">
-        <div class="menu-frame">
-            <div class="tabs">
-                <div class="tab active" data-tab="settings">ANA MENÜ</div>
-                <div class="tab" data-tab="graphics">GRAFİK</div>
-                <div class="tab" data-tab="multiplayer">ÇOK OYUNCULU</div>
+    <div id="menu-overlay" style="display: none;">
+        <div class="menu-frame pause-menu">
+            <div class="pause-title">⏸ OYUN DURAKLATILDI</div>
+            
+            <div class="pause-tabs">
+                <div class="pause-tab active" data-tab="pause-main">OYUN</div>
+                <div class="pause-tab" data-tab="pause-graphics">GRAFİK</div>
+                <div class="pause-tab" data-tab="pause-multi">ÇOK OYUNCULU</div>
             </div>
 
-            <!-- Settings -->
-            <div id="settings" class="content active">
+            <!-- Pause Main -->
+            <div id="pause-main" class="pause-content active">
+                <button class="pause-btn primary" id="btn-resume">▶ DEVAM ET</button>
+                <button class="pause-btn" id="btn-pause-settings">⚙ SEÇENEKLER</button>
+                <button class="pause-btn" id="btn-single">🔄 YENİDEN BAŞLA</button>
+                <button class="pause-btn danger" id="btn-back-to-menu">🏠 ANA MENÜYE DÖN</button>
+            </div>
+
+            <!-- Graphics Settings -->
+            <div id="pause-graphics" class="pause-content">
+                <div class="graphics-cards">
+                    <div class="graphics-card" data-quality="low">
+                        <div class="graphics-icon">⚡</div>
+                        <div class="graphics-label">DÜŞÜK</div>
+                        <div class="graphics-desc">Maksimum FPS</div>
+                    </div>
+                    <div class="graphics-card active" data-quality="medium">
+                        <div class="graphics-icon">⚖️</div>
+                        <div class="graphics-label">ORTA</div>
+                        <div class="graphics-desc">Dengeli</div>
+                    </div>
+                    <div class="graphics-card" data-quality="high">
+                        <div class="graphics-icon">✨</div>
+                        <div class="graphics-label">YÜKSEK</div>
+                        <div class="graphics-desc">En iyi görünüm</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multiplayer -->
+            <div id="pause-multi" class="pause-content">
                 <div class="control-group">
                     <label>Oyuncu İsmi</label>
                     <input type="text" id="inp-nick" value="Oyuncu" maxlength="20">
                 </div>
                 <div class="control-group">
-                    <label>Karakter Rengi</label>
-                    <input type="color" id="inp-color" value="#00a8ff">
-                </div>
-
-                <div class="btn-row">
-                        <button class="btn-orange" id="btn-single">OYUNA BAŞLA</button>
-                </div>
-            </div>
-
-            <!-- Graphics Settings -->
-            <div id="graphics" class="content">
-                <div class="control-group">
-                    <label>Grafik Kalitesi</label>
-                        <select id="quality-select">
-                        <option value="high">YÜKSEK (Güzel Görünüm)</option>
-                        <option value="medium">ORTA (Dengeli)</option>
-                        <option value="low">DÜŞÜK (Performans)</option>
-                    </select>
-                </div>
-                    <div class="help-box">
-                    <strong>DÜŞÜK:</strong> Render mesafesi azalır, daha az detay, daha yüksek FPS<br>
-                    <strong>ORTA:</strong> Dengeli performans ve görsel kalite<br>
-                    <strong>YÜKSEK:</strong> En iyi görünüm, daha fazla GPU kullanımı
-                </div>
-            </div>
-
-            <!-- Multiplayer -->
-            <div id="multiplayer" class="content">
-                <div class="control-group">
                     <label>Senin ID No</label>
-                    <input type="text" id="my-id" readonly onclick="this.select()"
-                        style="background:#222; text-align:center; letter-spacing:1px;">
+                    <input type="text" id="my-id" readonly onclick="this.select()" class="id-input">
                 </div>
                 <div class="control-group">
                     <label>Arkadaş ID No</label>
                     <input type="text" id="host-id" placeholder="ID Yapıştır">
                 </div>
                 <div class="btn-row">
-                    <button class="btn-green" id="btn-host">SUNUCU OL</button>
-                    <button class="btn-blue" id="btn-join">BAĞLAN</button>
+                    <button class="pause-btn small" id="btn-host">SUNUCU OL</button>
+                    <button class="pause-btn small primary" id="btn-join">BAĞLAN</button>
                 </div>
                 <p id="status"></p>
             </div>
-
-            <div id="btn-close-menu">MENÜYÜ KAPAT (ESC)</div>
         </div>
-        <div id="loading">VoxelEngine v1.1</div>
     </div>
 
     <!-- LIB (bundled for Tauri/offline) -->
     <script src="./vendor/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="./vendor/PointerLockControls.js"></script>
     <script src="./vendor/peerjs.min.js"></script>
     <script src="./js/noise.js"></script>
@@ -455,6 +484,16 @@
     <script src="./js/chunk.js"></script>
     <script src="./js/vehicle.js"></script>
     <script src="./js/inventory.js"></script>
+    <script src="./js/player.js"></script>
+    <script src="./js/menu.js"></script>
+    
+    <!-- Racing Mode - FiveM To -->
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+    <script src="./js/racing-vehicle.js"></script>
+    <script src="./js/vehicle-manager.js"></script>
+    <script src="./js/racing-ui.js"></script>
+    <script src="./js/racing-multiplayer.js"></script>
+    <script src="./js/racing.js"></script>
 
     <script>
         // --- PRE-INIT GLOBALS ---
@@ -587,8 +626,8 @@
         };
 
         function setupMaterialOptimization(material, blockName) {
-            // Only animate Leaves and Water (Grass removed per user request)
-            const isAnimatable = ['Leaf', 'Water'].includes(blockName);
+            // Animate all Leaf types and Water
+            const isAnimatable = blockName.includes('Leaf') || blockName === 'Water';
             
             if (isAnimatable) {
                 material.onBeforeCompile = (shader) => {
@@ -685,7 +724,22 @@
             }
         }
 
+        // Oyun yüklenme durumu
+        let gameInitialized = false;
+        
         function init() {
+            // Sadece ana menüyü başlat, oyun mod seçilince yüklenecek
+            if (typeof initMainMenu === 'function') {
+                initMainMenu();
+            }
+        }
+        
+        // Oyun motorunu başlat (mod seçildikten sonra çağrılır)
+        function initGameEngine() {
+            if (gameInitialized) return;
+            gameInitialized = true;
+            
+            console.log('Oyun motoru başlatılıyor...');
             initInventoryData();
             initThree();
             initInstancing();
@@ -697,7 +751,11 @@
             initInventoryUI();
             initPeer();
             animate();
+            console.log('Oyun motoru hazır!');
         }
+        
+        // Global erişim için
+        window.initGameEngine = initGameEngine;
 
         function initThree() {
             scene = new THREE.Scene();
@@ -705,6 +763,11 @@
             scene.fog = new THREE.Fog(0x87CEEB, 50, 120); // Extended fog range to prevent pop-in
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300); // Extended far plane
+            
+            // Initialize Player Model (Hands/Weapon)
+            if (typeof initPlayerModel === 'function') {
+                initPlayerModel(camera);
+            }
             
             // Optimized renderer
             renderer = new THREE.WebGLRenderer({ 
@@ -733,7 +796,7 @@
             if (typeof THREE.PointerLockControls === 'undefined') throw new Error("PointerLockControls yüklenemedi.");
             controls = new THREE.PointerLockControls(camera, document.body);
             scene.add(controls.getObject());
-            controls.getObject().position.set(0, 15, 0); // Start at reasonable height
+            controls.getObject().position.set(0, 30, 0); // Start higher to avoid trees
             camera.lookAt(0, 0, 0); // Look toward center
 
             document.addEventListener('keydown', onKey);
@@ -806,7 +869,30 @@
                 'OakLog': { top: 'default_tree_top.png', side: 'default_tree.png', bottom: 'default_tree_top.png' },
                 'BirchLog': { top: 'default_aspen_tree_top.png', side: 'default_aspen_tree.png', bottom: 'default_aspen_tree_top.png' },
                 'SpruceLog': { top: 'default_pine_tree_top.png', side: 'default_pine_tree.png', bottom: 'default_pine_tree_top.png' },
-                'Leaf': 'default_leaves.png'
+                'JungleLog': { top: 'default_jungletree_top.png', side: 'default_jungletree.png', bottom: 'default_jungletree_top.png' },
+                'Leaf': 'default_leaves.png',
+                'BirchLeaf': 'default_aspen_leaves.png',
+                'SpruceLeaf': 'default_leaves.png',  // No pine needles, use default leaves
+                'JungleLeaf': 'default_jungleleaves.png',
+                'AcaciaLeaf': 'default_acacia_leaves.png',
+                'OakPlanks': 'default_wood.png',
+                'BirchPlanks': 'default_aspen_wood.png',
+                'SprucePlanks': 'default_pine_wood.png',
+                'JunglePlanks': 'default_junglewood.png',
+                'Glass': 'default_glass.png',
+                'Gravel': 'default_gravel.png',
+                'Clay': 'default_clay.png',
+                'Obsidian': 'default_obsidian.png',
+                'Lava': 'default_lava.png',
+                'Ice': 'default_ice.png',
+                'CoalOre': 'default_mineral_coal.png',
+                'IronOre': 'default_mineral_iron.png',
+                'GoldOre': 'default_mineral_gold.png',
+                'DiamondOre': 'default_mineral_diamond.png',
+                'CoalBlock': 'default_coal_block.png',
+                'GoldBlock': 'default_gold_block.png',
+                'DiamondBlock': 'default_diamond_block.png',
+                'MossyCobble': 'default_mossycobble.png'
             };
 
             let filename = null;
@@ -830,9 +916,11 @@
                 img.onload = function() {
                     ctx.clearRect(0, 0, size, size);
                     
-                    // Special handling for leaves (transparency background)
-                    if (block.name === 'Leaf') {
-                        ctx.fillStyle = '#2E7D32'; // Dark green background for leaves
+                    // Special handling for all leaf types (transparency background)
+                    if (block.name.includes('Leaf')) {
+                        // Use block's color as background for leaf transparency
+                        const leafColor = '#' + block.col.toString(16).padStart(6, '0');
+                        ctx.fillStyle = leafColor;
                         ctx.fillRect(0, 0, size, size);
                     }
                     
@@ -843,19 +931,56 @@
                     
                     texture.needsUpdate = true;
                 };
+                img.onerror = function() {
+                    // Texture yüklenemezse prosedürel renk kullan
+                    console.warn(`Texture load failed for ${block.name}, using procedural color`);
+                    drawProceduralBlock(ctx, block, faceType, size);
+                    texture.needsUpdate = true;
+                };
             } else {
-                // Fallback to procedural if no texture found (e.g. for new blocks)
-                // ... (Existing procedural code could go here if needed, but we cover most)
+                // Fallback to procedural if no texture mapping
+                drawProceduralBlock(ctx, block, faceType, size);
             }
 
             return texture;
+        }
+        
+        // Prosedürel blok çizimi (texture yoksa veya yüklenemezse)
+        function drawProceduralBlock(ctx, block, faceType, size) {
+            const baseCol = '#' + block.col.toString(16).padStart(6, '0');
+            const topCol = block.top ? '#' + block.top.toString(16).padStart(6, '0') : baseCol;
+            const sideCol = block.side ? '#' + block.side.toString(16).padStart(6, '0') : baseCol;
+            
+            let color = baseCol;
+            if (faceType === 'top') color = topCol;
+            else if (faceType === 'side') color = sideCol;
+            
+            // Gradient fill
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, topCol);
+            gradient.addColorStop(1, baseCol);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add some noise/texture for leaves
+            if (block.name.includes('Leaf')) {
+                ctx.globalAlpha = 0.3;
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * size;
+                    const y = Math.random() * size;
+                    const s = 2 + Math.random() * 4;
+                    ctx.fillStyle = Math.random() > 0.5 ? '#1B5E20' : '#4CAF50';
+                    ctx.fillRect(x, y, s, s);
+                }
+                ctx.globalAlpha = 1.0;
+            }
         }
 
         // Global helper for inventory
         window.getBlockTextureUrl = function(block) {
             const BASE_URL = "https://raw.githubusercontent.com/nebulimity/MoreLikeMinecraft/master/default/";
             const TEXTURE_MAP = {
-                'Grass': 'default_grass_side.png', // Use side for icon usually, or top? Let's use side for grass block look
+                'Grass': 'default_grass_side.png',
                 'Dirt': 'default_dirt.png',
                 'Stone': 'default_stone.png',
                 'Cobble': 'default_cobble.png',
@@ -866,7 +991,25 @@
                 'OakLog': 'default_tree.png',
                 'BirchLog': 'default_aspen_tree.png',
                 'SpruceLog': 'default_pine_tree.png',
-                'Leaf': 'default_leaves.png'
+                'JungleLog': 'default_jungletree.png',
+                'Leaf': 'default_leaves.png',
+                'BirchLeaf': 'default_aspen_leaves.png',
+                'SpruceLeaf': 'default_leaves.png',  // No pine needles, use default leaves
+                'JungleLeaf': 'default_jungleleaves.png',
+                'AcaciaLeaf': 'default_acacia_leaves.png',
+                'OakPlanks': 'default_wood.png',
+                'BirchPlanks': 'default_aspen_wood.png',
+                'SprucePlanks': 'default_pine_wood.png',
+                'JunglePlanks': 'default_junglewood.png',
+                'Glass': 'default_glass.png',
+                'Gravel': 'default_gravel.png',
+                'Obsidian': 'default_obsidian.png',
+                'Lava': 'default_lava.png',
+                'Ice': 'default_ice.png',
+                'CoalOre': 'default_mineral_coal.png',
+                'IronOre': 'default_mineral_iron.png',
+                'GoldOre': 'default_mineral_gold.png',
+                'DiamondOre': 'default_mineral_diamond.png'
             };
             
             const map = TEXTURE_MAP[block.name];
@@ -914,10 +1057,12 @@
                 } else {
                     const texture = createBlockTexture(block, 'all');
                     mat = new THREE.MeshLambertMaterial({ map: texture });
-                    // Transparan bloklar için
-                    if (block.type === BLOCK_TYPE.TRANSPARENT) {
+                    // Transparan bloklar için (yapraklar dahil)
+                    if (block.type === BLOCK_TYPE.TRANSPARENT || block.name.includes('Leaf')) {
                         mat.transparent = true;
-                        mat.opacity = block.opacity || 0.9;
+                        mat.alphaTest = 0.5;  // Alpha cutoff for leaves
+                        mat.side = THREE.DoubleSide;  // Render both sides
+                        mat.opacity = block.opacity || 1.0;
                     }
                     // Sıvı bloklar
                     if (block.type === BLOCK_TYPE.LIQUID) {
@@ -1039,7 +1184,67 @@
         }
 
         // Chunk sistemi kullanılacak mı?
-        const USE_CHUNK_SYSTEM = true;
+        var USE_CHUNK_SYSTEM = true;
+        
+        // Güvenli spawn noktası bul (ağaç gövdelerinden uzak)
+        function findSafeSpawnPoint() {
+            const searchRadius = 10;
+            let bestX = 0, bestZ = 0, bestY = 30;
+            let found = false;
+            
+            // Merkeze yakın güvenli bir nokta ara
+            for (let r = 0; r <= searchRadius && !found; r++) {
+                for (let dx = -r; dx <= r && !found; dx++) {
+                    for (let dz = -r; dz <= r && !found; dz++) {
+                        if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue; // Sadece kenarlar
+                        
+                        const x = dx;
+                        const z = dz;
+                        
+                        // Zemin yüksekliğini bul
+                        let groundY = 0;
+                        for (let y = 50; y > 0; y--) {
+                            const key = `${x},${y},${z}`;
+                            if (voxelData.has(key)) {
+                                const block = voxelData.get(key);
+                                const blockDef = BLOCKS[block.type];
+                                // Sadece solid bloklar zemin olabilir
+                                if (blockDef && blockDef.type === BLOCK_TYPE.SOLID) {
+                                    groundY = y + 1;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (groundY < 3) continue; // Çok alçak
+                        
+                        // Baş seviyesinde ve üstünde blok var mı kontrol et
+                        let isSafe = true;
+                        for (let checkY = groundY; checkY < groundY + 3; checkY++) {
+                            const key = `${x},${checkY},${z}`;
+                            if (voxelData.has(key)) {
+                                const block = voxelData.get(key);
+                                const blockDef = BLOCKS[block.type];
+                                if (blockDef && blockDef.type === BLOCK_TYPE.SOLID) {
+                                    isSafe = false;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (isSafe && groundY > 0) {
+                            bestX = x;
+                            bestZ = z;
+                            bestY = groundY + 1.8;
+                            found = true;
+                        }
+                    }
+                }
+            }
+            
+            controls.getObject().position.set(bestX, bestY, bestZ);
+            console.log(`[Spawn] Safe spawn found at (${bestX}, ${bestY.toFixed(1)}, ${bestZ})`);
+        }
         
         function initWorld() {
             // Ground plane (water level) - covers entire map
@@ -1056,19 +1261,21 @@
             scene.add(water);
 
             if (USE_CHUNK_SYSTEM) {
-                // Chunk tabanlı dünya - lazy loading
+                // Chunk tabanlı dünya - progressive lazy loading
                 initChunkSystem();
                 console.log("[World] Chunk-based world system active");
-                // İlk chunk'ları yükle (spawn etrafında)
+                console.log("[World] Progressive loading enabled - chunks will load gradually");
+                
+                // Sadece spawn chunk'ını hemen yükle (minimum başlangıç)
                 const startTime = performance.now();
-                for (let dx = -3; dx <= 3; dx++) {
-                    for (let dz = -3; dz <= 3; dz++) {
-                        const chunk = getOrCreateChunk(dx, dz);
-                        generateChunk(chunk);
-                        buildChunkMesh(chunk);
-                    }
-                }
-                console.log(`[World] Initial chunks loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+                const spawnChunk = getOrCreateChunk(0, 0);
+                generateChunk(spawnChunk);
+                buildChunkMesh(spawnChunk);
+                console.log(`[World] Spawn chunk loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+                console.log("[World] Remaining chunks will load progressively...");
+                
+                // Güvenli spawn noktası bul (ağaçların içinde değil)
+                findSafeSpawnPoint();
             } else {
                 // Eski sistem - tüm haritayı bir seferde oluştur
                 const startTime = performance.now();
@@ -1293,9 +1500,13 @@
         function initUI() {
             // Hotbar is initialized by inventory.js
 
-            document.getElementById('btn-close-menu').onclick = resumeGame;
+            // btn-close-menu artık pause menüde yok, güvenli kontrol
+            const closeBtn = document.getElementById('btn-close-menu');
+            if (closeBtn) closeBtn.onclick = resumeGame;
+            
+            // btn-single artık pause menüde "yeniden başla" için
             const singleBtn = document.getElementById('btn-single');
-            if (singleBtn) singleBtn.onclick = resumeGame;
+            if (singleBtn) singleBtn.onclick = () => location.reload();
             
             // ESC key handler (WebView2/Tauri-safe)
             // Important: if pointer lock stays active, clicks target the lock element (not the menu),
@@ -1343,51 +1554,65 @@
             
             controls.addEventListener('lock', () => {
                 // When pointer locks, hide menu
-                document.getElementById('menu-overlay').style.display = 'none';
+                const menuOverlay = document.getElementById('menu-overlay');
+                if (menuOverlay) menuOverlay.style.display = 'none';
             });
 
             const nI = document.getElementById('inp-nick');
-            const cI = document.getElementById('inp-color');
+            const cI = document.getElementById('inp-color') || document.getElementById('settings-color');
             const sync = () => { 
-                myNick = nI.value; 
-                myCol = cI.value; 
+                if (nI) myNick = nI.value; 
+                if (cI) myCol = cI.value; 
                 // Include ID in profile broadcast
                 Broadcast({ t: 'p', i: myId, n: myNick, c: myCol }); 
             };
-            nI.addEventListener('input', sync); 
-            cI.addEventListener('input', sync);
-            cI.addEventListener('change', sync);
+            if (nI) nI.addEventListener('input', sync); 
+            if (cI) {
+                cI.addEventListener('input', sync);
+                cI.addEventListener('change', sync);
+            }
 
-            document.getElementById('btn-single').onclick = resumeGame;
+            const btnSingle = document.getElementById('btn-single');
+            if (btnSingle) btnSingle.onclick = () => location.reload();
 
-            document.getElementById('btn-host').onclick = () => {
-                resumeGame(); document.getElementById('status').innerText = "Host Aktif.";
+            const btnHost = document.getElementById('btn-host');
+            if (btnHost) btnHost.onclick = () => {
+                resumeGame(); 
+                const status = document.getElementById('status');
+                if (status) status.innerText = "Host Aktif.";
             };
-            document.getElementById('btn-join').onclick = () => {
+            
+            const btnJoin = document.getElementById('btn-join');
+            if (btnJoin) btnJoin.onclick = () => {
                 const id = document.getElementById('host-id').value.trim();
                 if (id && peer) {
-                    document.getElementById('status').innerText = "Bağlanıyor...";
+                    const status = document.getElementById('status');
+                    if (status) status.innerText = "Bağlanıyor...";
                     const conn = peer.connect(id);
                     conn.on('open', () => {
                         SetupConn(conn);
                         resumeGame();
-                        document.getElementById('status').innerText = "Bağlandı!";
+                        if (status) status.innerText = "Bağlandı!";
                     });
                     conn.on('error', (err) => {
-                        document.getElementById('status').innerText = "Hata: " + err;
+                        if (status) status.innerText = "Hata: " + err;
                     });
                 } else {
-                    document.getElementById('status').innerText = "ID giriniz!";
+                    const status = document.getElementById('status');
+                    if (status) status.innerText = "ID giriniz!";
                 }
             };
             
-            // Graphics quality selector
-            document.getElementById('quality-select').value = graphicsQuality;
-            document.getElementById('quality-select').onchange = (e) => {
-                graphicsQuality = e.target.value;
-                applyGraphicsSettings();
-                console.log('Graphics changed to:', graphicsQuality);
-            };
+            // Graphics quality selector - yeni kart sistemi kullanıyor, eski select yoksa atla
+            const qualitySelect = document.getElementById('quality-select');
+            if (qualitySelect) {
+                qualitySelect.value = graphicsQuality;
+                qualitySelect.onchange = (e) => {
+                    graphicsQuality = e.target.value;
+                    applyGraphicsSettings();
+                    console.log('Graphics changed to:', graphicsQuality);
+                };
+            }
         }
 
         function selectSlot(i) {
@@ -1460,7 +1685,19 @@
         function onMouse(e) {
             if (!controls.isLocked) return;
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const hits = raycaster.intersectObjects(imeshes.filter(m => m));
+            raycaster.far = 8; // Maksimum 8 blok mesafe
+            
+            // Hem normal blokları hem de bitkileri kontrol et
+            const allMeshes = imeshes.filter(m => m);
+            if (typeof plantMeshes !== 'undefined') {
+                for (const id in plantMeshes) {
+                    if (plantMeshes[id] && plantMeshes[id].count > 0) {
+                        allMeshes.push(plantMeshes[id]);
+                    }
+                }
+            }
+            
+            const hits = raycaster.intersectObjects(allMeshes);
 
             if (hits.length > 0) {
                 const h = hits[0];
@@ -1476,18 +1713,29 @@
                 else if (e.button === 1) { // Middle: Pick
                     const k = `${rx},${ry},${rz}`;
                     const d = voxelData.get(k);
-                    if (d) {
-                        const idx = hotbar.indexOf(d.type);
-                        if (idx !== -1) {
-                            selectSlot(idx + 1);
+                    if (d && d.type > 0) {
+                        // Hotbar'da bu blok zaten var mı kontrol et
+                        let existingIdx = -1;
+                        for (let i = 0; i < hotbar.length; i++) {
+                            if (hotbar[i] && hotbar[i].id === d.type) {
+                                existingIdx = i;
+                                break;
+                            }
+                        }
+                        
+                        if (existingIdx !== -1) {
+                            // Zaten varsa o slota geç
+                            selectSlot(existingIdx + 1);
                         } else {
-                            hotbar[selectedSlot - 1] = d.type;
+                            // Yoksa seçili slota ekle (doğru format: {id, count})
+                            hotbar[selectedSlot - 1] = { id: d.type, count: 1 };
                             updateHudHotbar();
                         }
                     }
                 }
                 else if (e.button === 2) { // Right: Place
-                    const type = hotbar[selectedSlot - 1];
+                    const slot = hotbar[selectedSlot - 1];
+                    const type = slot && slot.id ? slot.id : (typeof slot === 'number' ? slot : 0);
                     if (type > 0 && !aabbTest(controls.getObject().position, bx, by, bz)) {
                         setBlock(bx, by, bz, type);
                         playSound('place');
@@ -1588,7 +1836,14 @@
             for (let x = iMinX; x <= iMaxX; x++) {
                 for (let y = iMinY; y <= iMaxY; y++) {
                     for (let z = iMinZ; z <= iMaxZ; z++) {
-                        if (voxelData.has(`${x},${y},${z}`)) {
+                        const key = `${x},${y},${z}`;
+                        if (voxelData.has(key)) {
+                            const blockInfo = voxelData.get(key);
+                            const blockDef = BLOCKS[blockInfo.type];
+                            
+                            // Skip collision for plants
+                            if (blockDef && blockDef.type === BLOCK_TYPE.PLANT) continue;
+
                             // Block AABB (Centered at x,y,z with size 1)
                             const bMinX = x - 0.5; const bMaxX = x + 0.5;
                             const bMinY = y - 0.5; const bMaxY = y + 0.5;
@@ -1866,11 +2121,16 @@
                 updatePlants(timeSec);
             }
             
-            // Update chunk system (lazy loading)
-            if (USE_CHUNK_SYSTEM && controls && controls.isLocked) {
+            // Update chunk system (lazy loading with frustum culling)
+            // Load chunks even when not locked (background loading)
+            if (USE_CHUNK_SYSTEM && controls) {
                 const p = controls.getObject().position;
-                updateChunks(p.x, p.z);
-                
+                updateChunks(p.x, p.z, camera);
+            }
+            
+            // Update mobs and spawning only when playing
+            if (controls && controls.isLocked) {
+                const p = controls.getObject().position;
                 // Update mobs
                 if (typeof updateMobs === 'function') {
                     updateMobs(dt, { x: p.x, y: p.y, z: p.z });
@@ -1895,6 +2155,36 @@
                 updatePerformanceOverlay();
             }
             
+            // Update loading indicator ve performans bilgisi
+            if (typeof getChunkLoadingStatus === 'function') {
+                const loadStatus = getChunkLoadingStatus();
+                const loadingIndicator = document.getElementById('loading-indicator');
+                const loadingBar = document.getElementById('loading-bar');
+                const loadingText = document.getElementById('loading-text');
+                const perfStats = document.getElementById('perf-stats');
+                
+                // Loading indicator
+                if (loadStatus.isInitialLoad || loadStatus.queueLength > 8) {
+                    loadingIndicator.style.display = 'block';
+                    const progress = loadStatus.isInitialLoad 
+                        ? (loadStatus.loadRadius / 4) * 100 
+                        : Math.max(0, 100 - (loadStatus.queueLength / 40) * 100);
+                    loadingBar.style.width = Math.min(100, progress) + '%';
+                    loadingText.innerText = loadStatus.isInitialLoad 
+                        ? `Başlangıç: ${loadStatus.loadedChunks} chunk` 
+                        : `${loadStatus.queueLength} chunk kuyruğu`;
+                } else {
+                    loadingIndicator.style.display = 'none';
+                }
+                
+                // Performans bilgisi (F3 ile toggle - TODO)
+                if (perfStats) {
+                    document.getElementById('perf-fps').innerText = currentFps;
+                    document.getElementById('perf-chunks').innerText = loadStatus.loadedChunks;
+                    document.getElementById('perf-visible').innerText = loadStatus.visibleChunks || '--';
+                }
+            }
+            
             // FPS counter (update every 500ms for stability)
             fpsCounter++;
             fpsTime += dt;
@@ -1907,6 +2197,13 @@
             
             if (controls.isLocked) {
                 updatePhys(dt);
+                
+                // Update Player Model (Weapon Sway/Bob)
+                if (typeof updatePlayerModel === 'function') {
+                    const isMoving = moveState.f || moveState.b || moveState.l || moveState.r;
+                    updatePlayerModel(dt, isMoving, moveState.s);
+                }
+
                 const p = controls.getObject().position;
                 // Throttle network broadcasts (every 50ms instead of every frame)
                 if (t % 50 < 20) {

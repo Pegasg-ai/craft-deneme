@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FiveM To Vehicle Registry",
+  "description": "Araç tanımları için şema",
+  "type": "object",
+  "required": ["version", "vehicles"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "Şema versiyonu"
+    },
+    "categories": {
+      "type": "object",
+      "description": "Kategori tanımları",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "icon": { "type": "string" },
+          "description": { "type": "string" },
+          "defaults": {
+            "type": "object",
+            "properties": {
+              "maxSpeed": { "type": "number" },
+              "acceleration": { "type": "number" },
+              "braking": { "type": "number" },
+              "handling": { "type": "number" },
+              "mass": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "vehicles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Benzersiz araç ID (dosya adı ile eşleşmeli)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Görüntülenecek isim"
+          },
+          "year": {
+            "type": "integer",
+            "description": "Üretim yılı"
+          },
+          "manufacturer": {
+            "type": "string",
+            "description": "Üretici firma"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["sport", "super", "suv", "offroad", "service", "classic", "motorcycle"],
+            "description": "Araç kategorisi"
+          },
+          "model": {
+            "type": "string",
+            "description": "3D model dosya adı (.glb)"
+          },
+          "thumbnail": {
+            "type": ["string", "null"],
+            "description": "Önizleme resmi (.png/.jpg)"
+          },
+          "color": {
+            "type": "string",
+            "description": "Varsayılan renk (hex)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Araç açıklaması"
+          },
+          "stats": {
+            "type": "object",
+            "description": "Araç istatistikleri (boşsa kategori varsayılanları kullanılır)",
+            "properties": {
+              "maxSpeed": { "type": "number", "description": "Maksimum hız (km/h)" },
+              "acceleration": { "type": "number", "description": "0-100 km/h ivme gücü" },
+              "braking": { "type": "number", "description": "Fren gücü" },
+              "handling": { "type": "number", "description": "Yol tutuş (1-4)" },
+              "mass": { "type": "number", "description": "Kütle (kg)" }
+            }
+          },
+          "wheels": {
+            "type": "object",
+            "properties": {
+              "count": { "type": "integer", "description": "Tekerlek sayısı" },
+              "radius": { "type": "number", "description": "Tekerlek yarıçapı" }
+            }
+          },
+          "sounds": {
+            "type": "object",
+            "properties": {
+              "engine": { "type": "string" },
+              "horn": { "type": "string" },
+              "skid": { "type": "string" }
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Araç aktif mi?",
+            "default": true
+          }
+        }
+      }
+    }
+  }
+}

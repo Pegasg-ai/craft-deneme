@@ -1,0 +1,336 @@
+{
+  "$schema": "./vehicles.schema.json",
+  "version": 2,
+  "categories": {
+    "sport": {
+      "name": "Spor",
+      "icon": "🏎️",
+      "description": "Yüksek hız ve iyi yol tutuş",
+      "defaults": {
+        "maxSpeed": 250,
+        "acceleration": 28,
+        "braking": 22,
+        "handling": 2.5,
+        "mass": 1300
+      }
+    },
+    "super": {
+      "name": "Süper",
+      "icon": "🚀",
+      "description": "En hızlı ve en pahalı araçlar",
+      "defaults": {
+        "maxSpeed": 320,
+        "acceleration": 38,
+        "braking": 30,
+        "handling": 3,
+        "mass": 1150
+      }
+    },
+    "suv": {
+      "name": "SUV",
+      "icon": "🚙",
+      "description": "Geniş ve güçlü araçlar",
+      "defaults": {
+        "maxSpeed": 185,
+        "acceleration": 22,
+        "braking": 25,
+        "handling": 1.8,
+        "mass": 2200
+      }
+    },
+    "offroad": {
+      "name": "Arazi",
+      "icon": "🏔️",
+      "description": "Her zeminde gidebilen araçlar",
+      "defaults": {
+        "maxSpeed": 200,
+        "acceleration": 24,
+        "braking": 24,
+        "handling": 2.1,
+        "mass": 2000
+      }
+    },
+    "service": {
+      "name": "Hizmet",
+      "icon": "🚛",
+      "description": "Ticari ve hizmet araçları",
+      "defaults": {
+        "maxSpeed": 160,
+        "acceleration": 16,
+        "braking": 26,
+        "handling": 1.5,
+        "mass": 3000
+      }
+    },
+    "classic": {
+      "name": "Klasik",
+      "icon": "🚗",
+      "description": "Nostaljik klasik araçlar",
+      "defaults": {
+        "maxSpeed": 220,
+        "acceleration": 22,
+        "braking": 20,
+        "handling": 2,
+        "mass": 1500
+      }
+    },
+    "motorcycle": {
+      "name": "Motosiklet",
+      "icon": "🏍️",
+      "description": "İki tekerlekli hızlı araçlar",
+      "defaults": {
+        "maxSpeed": 280,
+        "acceleration": 42,
+        "braking": 28,
+        "handling": 3.2,
+        "mass": 220
+      }
+    }
+  },
+  "vehicles": [
+    {
+      "id": "1908_albany_roadster",
+      "name": "Albany Roadster (1908)",
+      "year": 1908,
+      "manufacturer": null,
+      "category": "classic",
+      "model": "1908_albany_roadster.glb",
+      "thumbnail": null,
+      "color": "#E67E22",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "1988_bmw_m3_evolution_ii_e30",
+      "name": "BMW M3 E30 Evolution II",
+      "year": 1988,
+      "manufacturer": "BMW",
+      "category": "classic",
+      "model": "1988_bmw_m3_evolution_ii_e30.glb",
+      "thumbnail": null,
+      "color": "#E67E22",
+      "stats": {
+        "maxSpeed": 235,
+        "acceleration": 24,
+        "handling": 2.2
+      },
+      "wheels": {
+        "count": 4,
+        "radius": 0.35
+      },
+      "sounds": {
+        "engine": "engine_v6.mp3",
+        "horn": "horn_classic.mp3"
+      },
+      "enabled": true
+    },
+    {
+      "id": "1970_dodge_charger_daytona",
+      "name": "Dodge Charger Daytona (1970)",
+      "year": 1970,
+      "manufacturer": "Dodge",
+      "category": "classic",
+      "model": "1970_dodge_charger_daytona.glb",
+      "thumbnail": null,
+      "color": "#E67E22",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "gmc_dukw",
+      "name": "GMC DUKW",
+      "year": 1942,
+      "manufacturer": "GMC",
+      "category": "offroad",
+      "model": "gmc_dukw.glb",
+      "thumbnail": null,
+      "color": "#27AE60",
+      "stats": {
+        "maxSpeed": 80,
+        "acceleration": 12,
+        "handling": 1.2,
+        "mass": 6500
+      },
+      "description": "2. Dünya Savaşı amfibik araç",
+      "enabled": true
+    },
+    {
+      "id": "2003_gmc_topkick_c6500",
+      "name": "GMC TopKick C6500",
+      "year": 2003,
+      "manufacturer": "GMC",
+      "category": "service",
+      "model": "2003_gmc_topkick_c6500.glb",
+      "thumbnail": null,
+      "color": "#34495E",
+      "stats": {
+        "maxSpeed": 140,
+        "mass": 5000
+      },
+      "description": "Transformers Ironhide",
+      "enabled": true
+    },
+    {
+      "id": "bmw_m2_competition_grays_widebody",
+      "name": "Bmw M2 Competition Grays Widebody",
+      "year": null,
+      "manufacturer": "BMW",
+      "category": "sport",
+      "model": "bmw_m2_competition_grays_widebody.glb",
+      "thumbnail": null,
+      "color": "#3498DB",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "2003_bmw_m3_csl_e46",
+      "name": "BMW M3 CSL E46",
+      "year": 2003,
+      "manufacturer": "BMW",
+      "category": "sport",
+      "model": "2003_bmw_m3_csl_e46.glb",
+      "thumbnail": null,
+      "color": "#3498DB",
+      "stats": {
+        "maxSpeed": 265,
+        "acceleration": 30,
+        "handling": 2.6
+      },
+      "enabled": true
+    },
+    {
+      "id": "2014_m2_motoring_bmw_m3_e46",
+      "name": "BMW M3 E46 M2 Motoring",
+      "year": 2014,
+      "manufacturer": "BMW",
+      "category": "sport",
+      "model": "2014_m2_motoring_bmw_m3_e46.glb",
+      "thumbnail": null,
+      "color": "#9B59B6",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "bmw_m4_modified_widebody_knitro_builds",
+      "name": "Bmw M4 Modified Widebody Knitro Builds",
+      "year": null,
+      "manufacturer": "BMW",
+      "category": "sport",
+      "model": "bmw_m4_modified_widebody_knitro_builds.glb",
+      "thumbnail": null,
+      "color": "#1ABC9C",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "dodge_challenger_rt",
+      "name": "Dodge Challenger Rt",
+      "year": null,
+      "manufacturer": "Dodge",
+      "category": "sport",
+      "model": "dodge_challenger_rt.glb",
+      "thumbnail": null,
+      "color": "#9B59B6",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "formula_e_gen3_evo.glb",
+      "name": "Formula E Gen3 Evo.Glb",
+      "year": null,
+      "manufacturer": null,
+      "category": "sport",
+      "model": "formula_e_gen3_evo.glb.glb",
+      "thumbnail": null,
+      "color": "#1ABC9C",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "m8_greyhound",
+      "name": "M8 Greyhound",
+      "year": null,
+      "manufacturer": null,
+      "category": "sport",
+      "model": "m8_greyhound.glb",
+      "thumbnail": null,
+      "color": "#3498DB",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "opel_calibra",
+      "name": "Opel Calibra",
+      "year": 1990,
+      "manufacturer": "Opel",
+      "category": "sport",
+      "model": "opel_calibra.glb",
+      "thumbnail": null,
+      "color": "#E74C3C",
+      "stats": {
+        "maxSpeed": 245,
+        "acceleration": 26
+      },
+      "enabled": true
+    },
+    {
+      "id": "2005_bmw_m3_gtr_need_for_speed_most_wanted",
+      "name": "BMW M3 GTR (NFS MW)",
+      "year": 2005,
+      "manufacturer": "BMW",
+      "category": "super",
+      "model": "2005_bmw_m3_gtr_need_for_speed_most_wanted.glb",
+      "thumbnail": null,
+      "color": "#ECF0F1",
+      "stats": {
+        "maxSpeed": 310,
+        "acceleration": 36,
+        "handling": 2.9
+      },
+      "description": "Need for Speed Most Wanted efsanesi",
+      "enabled": true
+    },
+    {
+      "id": "2020_brabham_bt62",
+      "name": "Brabham BT62",
+      "year": 2020,
+      "manufacturer": "Brabham",
+      "category": "super",
+      "model": "2020_brabham_bt62.glb",
+      "thumbnail": null,
+      "color": "#F1C40F",
+      "stats": {
+        "maxSpeed": 340,
+        "acceleration": 45,
+        "handling": 3.5,
+        "mass": 972
+      },
+      "description": "Pist canavarı, sadece 70 adet üretildi",
+      "enabled": true
+    },
+    {
+      "id": "1936_bugatti_type_57_s_roadster",
+      "name": "Bugatti Type 57 S Roadster (1936)",
+      "year": 1936,
+      "manufacturer": "Bugatti",
+      "category": "super",
+      "model": "1936_bugatti_type_57_s_roadster.glb",
+      "thumbnail": null,
+      "color": "#FF6B6B",
+      "stats": {},
+      "enabled": true
+    },
+    {
+      "id": "2020_gmc_acadia_at4",
+      "name": "GMC Acadia AT4",
+      "year": 2020,
+      "manufacturer": "GMC",
+      "category": "suv",
+      "model": "2020_gmc_acadia_at4.glb",
+      "thumbnail": null,
+      "color": "#2ECC71",
+      "stats": {},
+      "enabled": true
+    }
+  ]
+}

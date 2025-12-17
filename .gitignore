@@ -13,3 +13,6 @@ src-tauri/.tauri/
 .vscode/
 .idea/
 .DS_Store
+
+# Büyük araç dosyaları (100MB+ GitHub limiti)
+assets/vehicles/1908_albany_roadster.glb

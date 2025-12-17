@@ -285,7 +285,12 @@ function checkVehicleCollision(vehicle) {
         const bz = Math.floor(worldPoint.z);
         
         const k = `${bx},${by},${bz}`;
-        if (voxelData.has(k)) return true;
+        if (voxelData.has(k)) {
+            const blockInfo = voxelData.get(k);
+            const blockDef = BLOCKS[blockInfo.type];
+            if (blockDef && blockDef.type === BLOCK_TYPE.PLANT) continue;
+            return true;
+        }
     }
     return false;
 }

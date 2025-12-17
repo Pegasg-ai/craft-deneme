@@ -6,6 +6,7 @@ const dist = path.join(root, 'dist');
 const indexSrc = path.join(root, 'index.html');
 const vendorSrc = path.join(root, 'vendor');
 const jsSrc = path.join(root, 'js');
+const assetsSrc = path.join(root, 'assets');
 
 function copyDir(srcDir, destDir) {
   if (!fs.existsSync(srcDir)) return;
@@ -43,6 +44,11 @@ function main() {
   // Copy JS modules
   if (fs.existsSync(jsSrc)) {
     copyDir(jsSrc, path.join(dist, 'js'));
+  }
+
+  // Copy assets (vehicles, textures, etc.)
+  if (fs.existsSync(assetsSrc)) {
+    copyDir(assetsSrc, path.join(dist, 'assets'));
   }
 }
 

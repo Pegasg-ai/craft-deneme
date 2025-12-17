@@ -61,8 +61,8 @@ function initInventoryData() {
     
     // Başlangıç hotbar
     hotbar[0] = createStack(3, 64);  // Stone
-    hotbar[1] = createStack(10, 64); // Planks
-    hotbar[2] = createStack(14, 64); // Bricks
+    hotbar[1] = createStack(16, 64); // OakPlanks
+    hotbar[2] = createStack(6, 64);  // Brick (ID 6)
     hotbar[3] = createStack(4, 64);  // OakLog
     hotbar[4] = createStack(1, 64);  // Grass
 }
